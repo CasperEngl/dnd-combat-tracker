@@ -1,23 +1,23 @@
 import { useMachine } from "@xstate/react"
 import { useEffect, useState } from "react"
-import { SettingsPane } from "~/components/SettingsPane"
+import { SettingsPane } from "~/components/settings-pane"
 import {
   AttackHeader,
   DicePoolSelector,
   DieSelector,
   HitMissButtons,
-} from "~/components/tracker/AttackControls"
+} from "~/components/tracker/attack-controls"
 import {
   BonusActionPanel,
   IntroPanel,
   TurnEndPanel,
-} from "~/components/tracker/FlowPanels"
-import { HeaderBar, type TurnPhase } from "~/components/tracker/HeaderBar"
-import { Sidebar } from "~/components/tracker/Sidebar"
-import { useCharacterSettings } from "~/context/CharacterSettingsContext"
-import { useDamageEntry } from "~/context/DamageEntryContext"
+} from "~/components/tracker/flow-panels"
+import { HeaderBar, type TurnPhase } from "~/components/tracker/header-bar"
+import { Sidebar } from "~/components/tracker/sidebar"
+import { useCharacterSettings } from "~/context/character-settings-context"
+import { useDamageEntry } from "~/context/damage-entry-context"
 import { allDiceSelected } from "~/lib/dice"
-import { rogueTurnMachine } from "~/rogueTurnMachine"
+import { rogueTurnMachine } from "~/rogue-turn-machine"
 
 const getShortswordHitHint = (
   weaponDieSelected: boolean,

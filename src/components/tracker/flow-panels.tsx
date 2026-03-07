@@ -1,5 +1,5 @@
 import { ChevronRight, Eye, type LucideIcon, Shield, Wind } from "lucide-react"
-import type { BonusActionChoice } from "~/rogueTurnMachine"
+import type { BonusActionChoice } from "~/rogue-turn-machine"
 
 const bonusActions: Array<{
   id: BonusActionChoice

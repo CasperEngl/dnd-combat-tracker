@@ -8,7 +8,7 @@ import {
 } from "lucide-react"
 import type { CharacterSettings } from "~/lib/character-settings"
 import { formatSignedNumber, formatWeaponFormula } from "~/lib/dice"
-import type { AttackResult } from "~/rogueTurnMachine"
+import type { AttackResult } from "~/rogue-turn-machine"
 
 interface SidebarProps {
   resolvedAttacks: AttackResult[]

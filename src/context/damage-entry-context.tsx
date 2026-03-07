@@ -6,7 +6,7 @@ import {
   useMemo,
   useState,
 } from "react"
-import { useCharacterSettings } from "~/context/CharacterSettingsContext"
+import { useCharacterSettings } from "~/context/character-settings-context"
 import {
   allDiceSelected,
   createEmptyDicePool,
