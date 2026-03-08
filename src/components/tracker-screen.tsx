@@ -14,25 +14,29 @@ import {
 } from "~/components/tracker/flow-panels"
 import { HeaderBar, type TurnPhase } from "~/components/tracker/header-bar"
 import { Sidebar } from "~/components/tracker/sidebar"
-import { useCharacterSettings } from "~/context/character-settings-context"
 import { useDamageEntry } from "~/context/damage-entry-context"
-import { allDiceSelected } from "~/lib/dice"
+import { useRogueTracker } from "~/context/rogue-tracker-context"
+import type {
+  CharacterFormValues,
+  CharacterRecord,
+} from "~/lib/character-record"
+import { allDiceSelected, isDicePoolCommitted } from "~/lib/dice"
 import { rogueTurnMachine } from "~/rogue-turn-machine"
 
 const getShortswordHitHint = (
   weaponDieSelected: boolean,
-  sneakAttackReady: boolean,
+  sneakAttackCommitted: boolean,
 ) => {
-  if (!weaponDieSelected && !sneakAttackReady) {
-    return "Choose the shortsword die and each Sneak Attack die before confirming a hit."
+  if (!weaponDieSelected && !sneakAttackCommitted) {
+    return "Choose the shortsword die, then either finish every Sneak Attack die or leave Sneak Attack off."
   }
 
   if (!weaponDieSelected) {
     return "Choose the shortsword die before confirming a hit."
   }
 
-  if (!sneakAttackReady) {
-    return "Choose each Sneak Attack die before confirming a hit."
+  if (!sneakAttackCommitted) {
+    return "Either finish every Sneak Attack die or leave Sneak Attack off before confirming a hit."
   }
 
   return null
@@ -41,28 +45,44 @@ const getShortswordHitHint = (
 const getNickHitHint = (
   weaponDieSelected: boolean,
   sneakAttackAvailable: boolean,
-  sneakAttackReady: boolean,
+  sneakAttackCommitted: boolean,
 ) => {
-  if (!weaponDieSelected && sneakAttackAvailable && !sneakAttackReady) {
-    return "Choose the dagger die and each Sneak Attack die before confirming a hit."
+  if (!weaponDieSelected && sneakAttackAvailable && !sneakAttackCommitted) {
+    return "Choose the dagger die, then either finish every Sneak Attack die or leave Sneak Attack off."
   }
 
   if (!weaponDieSelected) {
     return "Choose the dagger die before confirming a hit."
   }
 
-  if (sneakAttackAvailable && !sneakAttackReady) {
-    return "Choose each Sneak Attack die before confirming a hit."
+  if (sneakAttackAvailable && !sneakAttackCommitted) {
+    return "Either finish every Sneak Attack die or leave Sneak Attack off before confirming a hit."
   }
 
   return null
 }
 
-export function TrackerScreen() {
+interface TrackerScreenProps {
+  activeCharacter: CharacterRecord
+  characters: CharacterRecord[]
+  onCreateCharacter: (values: CharacterFormValues) => Promise<void>
+  onSetActiveCharacter: (characterId: string) => Promise<void>
+  onSignOut: () => Promise<void>
+  onUpdateCharacter: (values: CharacterFormValues) => Promise<void>
+}
+
+export function TrackerScreen({
+  activeCharacter,
+  characters,
+  onCreateCharacter,
+  onSetActiveCharacter,
+  onSignOut,
+  onUpdateCharacter,
+}: TrackerScreenProps) {
   const [snapshot, send] = useMachine(rogueTurnMachine)
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const { settings, setSettings, sneakAttackDiceCount, daggerModifier } =
-    useCharacterSettings()
+  const { settings, saveSettings, sneakAttackDiceCount, daggerModifier } =
+    useRogueTracker()
   const {
     shortswordWeaponDie,
     setShortswordWeaponDie,
@@ -77,13 +97,12 @@ export function TrackerScreen() {
     shortswordSneakDamage,
     nickSneakDamage,
     isShortswordHitReady,
-    isNickSneakReady,
     resetSelections,
   } = useDamageEntry()
 
   const currentPhase = snapshot.value as TurnPhase
   const { context } = snapshot
-  const selectionResetToken = `${currentPhase}:${settings.rogueLevel}:${settings.dexModifier}:${settings.applyDexToBothWeapons}`
+  const selectionResetToken = `${currentPhase}:${settings.level}:${settings.dexModifier}:${settings.applyDexToBothWeapons}`
 
   useEffect(() => {
     void selectionResetToken
@@ -95,36 +114,45 @@ export function TrackerScreen() {
   )
   const isNickHitReady =
     nickWeaponDie !== null &&
-    (!context.sneakAttackAvailable || isNickSneakReady)
+    (!context.sneakAttackAvailable || isDicePoolCommitted(nickSneakDice))
 
   return (
     <>
       <SettingsPane
+        activeCharacter={activeCharacter}
+        onCreateCharacter={onCreateCharacter}
         onOpenChange={setSettingsOpen}
-        onSettingsChange={setSettings}
+        onSaveSettings={saveSettings}
+        onSignOut={onSignOut}
+        onUpdateCharacter={onUpdateCharacter}
         open={settingsOpen}
         settings={settings}
       />
 
       <div className="flex min-h-screen flex-col overflow-hidden bg-warm-950 text-warm-100">
         <HeaderBar
+          activeCharacter={activeCharacter}
+          characters={characters}
           currentPhase={currentPhase}
           onOpenSettings={() => setSettingsOpen(true)}
           onReset={() => send({ type: "RESET" })}
+          onSetActiveCharacter={(characterId) =>
+            void onSetActiveCharacter(characterId)
+          }
           settings={settings}
         />
 
         <div className="grid flex-1 min-h-0 grid-cols-1 gap-3 p-3 xl:grid-cols-[1fr_240px]">
           <div className="min-h-0 overflow-y-auto">
             <div className="flex min-h-full flex-col gap-2.5">
-              {currentPhase === "idle" && (
+              {currentPhase === "idle" ? (
                 <IntroPanel onStart={() => send({ type: "START_TURN" })} />
-              )}
+              ) : null}
 
-              {currentPhase === "shortswordAttack" && (
+              {currentPhase === "shortswordAttack" ? (
                 <>
                   <AttackHeader
-                    note="On hit, Sneak Attack lands here and Vex grants advantage on Nick."
+                    note="On hit, shortsword damage always lands. Sneak Attack is optional here, and Vex still grants advantage on Nick."
                     noteActive
                     title="Action: Shortsword (Vex)"
                   />
@@ -152,14 +180,16 @@ export function TrackerScreen() {
                     hitDisabled={!isShortswordHitReady}
                     hitHint={getShortswordHitHint(
                       shortswordWeaponDie !== null,
-                      allDiceSelected(shortswordSneakDice),
+                      isDicePoolCommitted(shortswordSneakDice),
                     )}
                     onHit={() =>
                       send({
                         type: "RESOLVE_SHORTSWORD",
                         hit: true,
                         weaponDamage: shortswordWeaponDamage,
-                        sneakAttackDamage: shortswordSneakDamage,
+                        sneakAttackDamage: allDiceSelected(shortswordSneakDice)
+                          ? shortswordSneakDamage
+                          : 0,
                       })
                     }
                     onMiss={() =>
@@ -172,9 +202,9 @@ export function TrackerScreen() {
                     }
                   />
                 </>
-              )}
+              ) : null}
 
-              {currentPhase === "nickAttack" && (
+              {currentPhase === "nickAttack" ? (
                 <>
                   <AttackHeader
                     note={
@@ -219,7 +249,7 @@ export function TrackerScreen() {
                     hitHint={getNickHitHint(
                       nickWeaponDie !== null,
                       context.sneakAttackAvailable,
-                      isNickSneakReady,
+                      isDicePoolCommitted(nickSneakDice),
                     )}
                     onHit={() =>
                       send({
@@ -227,7 +257,9 @@ export function TrackerScreen() {
                         hit: true,
                         weaponDamage: nickWeaponDamage,
                         sneakAttackDamage: context.sneakAttackAvailable
-                          ? nickSneakDamage
+                          ? allDiceSelected(nickSneakDice)
+                            ? nickSneakDamage
+                            : 0
                           : 0,
                       })
                     }
@@ -241,28 +273,29 @@ export function TrackerScreen() {
                     }
                   />
                 </>
-              )}
+              ) : null}
 
-              {currentPhase === "bonusActionChoice" && (
+              {currentPhase === "bonusActionChoice" ? (
                 <BonusActionPanel
                   onChoose={(choice) =>
                     send({ type: "CHOOSE_BONUS_ACTION", choice })
                   }
                 />
-              )}
+              ) : null}
 
-              {currentPhase === "turnEnded" && (
+              {currentPhase === "turnEnded" ? (
                 <TurnEndPanel
                   bonusAction={context.bonusAction}
                   damageTotal={context.damageTotal}
                   onReset={() => send({ type: "RESET" })}
                   onStartNext={() => send({ type: "START_TURN" })}
                 />
-              )}
+              ) : null}
             </div>
           </div>
 
           <Sidebar
+            activeCharacter={activeCharacter}
             damageTotal={context.damageTotal}
             daggerModifier={daggerModifier}
             resolvedAttacks={resolvedAttacks}

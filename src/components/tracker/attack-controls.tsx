@@ -1,5 +1,4 @@
 import { Check, X } from "lucide-react"
-import { useMemo } from "react"
 import { createRange, type DieValue, formatModifier } from "~/lib/dice"
 
 export function AttackHeader({
@@ -139,13 +138,9 @@ export function DicePoolSelector({
   subtotal: number
   disabled?: boolean
 }) {
-  const slotIds = useMemo(
-    () =>
-      Array.from(
-        { length: values.length },
-        (_, slotIndex) => `${label}-${slotIndex + 1}`,
-      ),
-    [label, values.length],
+  const slotIds = Array.from(
+    { length: values.length },
+    (_, slotIndex) => `${label}-${slotIndex + 1}`,
   )
 
   return (

@@ -6,13 +6,16 @@ import {
   Sparkles,
   Swords,
 } from "lucide-react"
-import type { CharacterSettings } from "~/lib/character-settings"
+import type { CharacterRecord } from "~/lib/character-record"
+import { getCharacterSummary } from "~/lib/character-record"
 import { formatSignedNumber, formatWeaponFormula } from "~/lib/dice"
+import type { RogueTrackerSettings } from "~/lib/rogue-tracker"
 import type { AttackResult } from "~/rogue-turn-machine"
 
 interface SidebarProps {
+  activeCharacter: CharacterRecord
   resolvedAttacks: AttackResult[]
-  settings: CharacterSettings
+  settings: RogueTrackerSettings
   damageTotal: number
   sneakAttackAvailable: boolean
   vexAdvantageQueued: boolean
@@ -21,6 +24,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({
+  activeCharacter,
   resolvedAttacks,
   settings,
   damageTotal,
@@ -59,7 +63,7 @@ export function Sidebar({
               color="neutral"
               icon={Shield}
               label="Level"
-              value={`${settings.rogueLevel}`}
+              value={`${settings.level}`}
             />
             <StatusRow
               color="neutral"
@@ -89,6 +93,12 @@ export function Sidebar({
           <p className="mb-2 text-[9px] font-mono font-semibold uppercase tracking-[0.25em] text-warm-300">
             Character
           </p>
+          <p className="mb-2 text-sm font-semibold text-warm-50">
+            {activeCharacter.name}
+          </p>
+          <p className="mb-3 text-[11px] text-warm-300">
+            {getCharacterSummary(activeCharacter)}
+          </p>
           <div className="space-y-1.5 text-[11px] leading-relaxed">
             <ReferenceRow
               icon={Swords}
@@ -103,7 +113,7 @@ export function Sidebar({
             <ReferenceRow
               icon={Sparkles}
               label="Sneak Attack"
-              text={`${sneakAttackDiceCount}d6 at rogue level ${settings.rogueLevel}.`}
+              text={`${sneakAttackDiceCount}d6 at rogue level ${settings.level}.`}
             />
           </div>
         </div>
@@ -165,7 +175,7 @@ function StatusRow({
   return (
     <div className="flex items-center justify-between gap-2 rounded-lg border border-warm-700 bg-warm-950/80 px-2.5 py-2">
       <div className="flex items-center gap-1.5">
-        <div className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${dotClass}`} />
+        <div className={`h-1.5 w-1.5 shrink-0 rounded-full ${dotClass}`} />
         <Icon className="h-3 w-3 text-warm-300" />
         <span className="text-[10px] font-mono text-warm-200">{label}</span>
       </div>
@@ -189,7 +199,7 @@ function ReferenceRow({
 }) {
   return (
     <div className="flex items-start gap-2 rounded-lg border border-warm-700 bg-warm-950/60 px-2.5 py-2">
-      <Icon className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-amber-400" />
+      <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-400" />
       <p>
         <span className="font-semibold text-warm-100">{label}</span>{" "}
         <span className="text-warm-200">{text}</span>

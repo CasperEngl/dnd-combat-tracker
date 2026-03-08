@@ -100,7 +100,7 @@ export const rogueTurnMachine = setup({
 
       return {
         damageTotal: totalDamage,
-        sneakAttackAvailable: false,
+        sneakAttackAvailable: sneakAttackDamage === 0,
         vexAdvantageQueued: true,
         shortsword: {
           id: "shortsword",
@@ -111,7 +111,9 @@ export const rogueTurnMachine = setup({
           sneakAttackDamage,
           totalDamage,
           summary:
-            "Hit. Sneak Attack lands here, and Vex grants advantage on the Nick attack.",
+            sneakAttackDamage > 0
+              ? "Hit. Sneak Attack lands here, and Vex grants advantage on the Nick attack."
+              : "Hit. Shortsword damage lands, Vex grants advantage on Nick, and Sneak Attack can still land on a later hit.",
         },
       }
     }),
@@ -148,7 +150,8 @@ export const rogueTurnMachine = setup({
 
       return {
         damageTotal: context.damageTotal + totalDamage,
-        sneakAttackAvailable: false,
+        sneakAttackAvailable:
+          context.sneakAttackAvailable && sneakAttackDamage === 0,
         vexAdvantageQueued: false,
         nick: {
           id: "nick",
@@ -162,7 +165,7 @@ export const rogueTurnMachine = setup({
             sneakAttackDamage > 0
               ? "Hit. Dagger damage lands and Sneak Attack is applied here."
               : hadAdvantage
-                ? "Hit with advantage from Vex. Sneak Attack was already spent on the shortsword."
+                ? "Hit with advantage from Vex. Dagger damage lands without Sneak Attack."
                 : "Hit. Dagger damage lands without Sneak Attack.",
         },
       }

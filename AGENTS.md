@@ -8,8 +8,17 @@
 - Damage entry is intentionally manual: users choose each die result before confirming a hit.
 - Damage-entry selections live outside the XState machine in `src/context/damage-entry-context.tsx`; resolved turn state lives in the machine.
 - If dice selections clear unexpectedly, check `src/components/tracker-screen.tsx` first because selections reset on phase and character-setting changes.
-- Character settings currently persist in `localStorage`; turn history and combat sessions do not yet persist.
+- Character records and tracker-specific settings persist in Convex; turn history and combat sessions do not yet persist.
 - Use Effect for backend state management and backend logic; new backend code should be written in Effect.
 - If you touch existing backend code and there is a clear opportunity to simplify or strengthen it by moving it to Effect, prefer doing so.
+- Prefer `Effect.gen(...).pipe(...)` style over wrapping `Effect.gen(...)` in separate `Effect.run*` calls.
+- When adding an external service that should be mockable in tests, prefer wrapping it with `Effect.Service`.
+- Remove outdated logic instead of preserving backwards-compatibility code paths by default.
+- If removing or reshaping old behavior could affect persisted user data or user characters, stop and get user approval before proceeding.
+- Do not use the `any` type; redesign the solution instead.
+- Prefer Inversion of Control over hardcoded feature wiring so trackers, classes, and services stay pluggable.
+- Follow `react.dev/learn/you-might-not-need-an-effect`; save persistent state from explicit events instead of synchronization effects.
+- The project targets React Compiler; do not add manual memoization with `useMemo`, `useCallback`, or similar escape hatches.
+- Biome is the primary React Compiler lint guardrail here; keep `useHookAtTopLevel` enabled and require explicit dependency arrays so `useExhaustiveDependencies` can catch stale closures early.
 - Add newly discovered non-obvious rules, debugging traps, persistence constraints, and emerging project conventions to this file.
 - Keep additions short and factual so this file stays useful as a lightweight list of guidelines.

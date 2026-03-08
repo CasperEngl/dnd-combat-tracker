@@ -1,8 +1,11 @@
 import { Check, SlidersHorizontal } from "lucide-react"
 import { Fragment } from "react"
+import { CharacterSwitcher } from "~/components/character-switcher"
 import { Button } from "~/components/ui/button"
-import type { CharacterSettings } from "~/lib/character-settings"
+import type { CharacterRecord } from "~/lib/character-record"
+import { getCharacterSummary } from "~/lib/character-record"
 import { formatSignedNumber } from "~/lib/dice"
+import type { RogueTrackerSettings } from "~/lib/rogue-tracker"
 
 export type TurnPhase =
   | "idle"
@@ -28,17 +31,23 @@ const phaseLabels: Record<TurnPhase, string> = {
 }
 
 interface HeaderBarProps {
+  activeCharacter: CharacterRecord
+  characters: CharacterRecord[]
   currentPhase: TurnPhase
-  settings: CharacterSettings
   onOpenSettings: () => void
   onReset: () => void
+  onSetActiveCharacter: (characterId: string) => void
+  settings: RogueTrackerSettings
 }
 
 export function HeaderBar({
+  activeCharacter,
+  characters,
   currentPhase,
-  settings,
   onOpenSettings,
   onReset,
+  onSetActiveCharacter,
+  settings,
 }: HeaderBarProps) {
   const currentPhaseIndex = phaseOrder.indexOf(currentPhase)
 
@@ -49,11 +58,19 @@ export function HeaderBar({
           Rogue Turn Tracker
         </p>
         <h1 className="mt-0.5 text-base leading-none font-bold text-warm-50">
-          Roll Flow
+          {activeCharacter.name}
         </h1>
       </div>
 
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
+        <CharacterSwitcher
+          activeCharacterId={activeCharacter._id}
+          characters={characters}
+          onChange={onSetActiveCharacter}
+        />
+        <span className="rounded-md border border-warm-800 bg-warm-900 px-2 py-1 text-[10px] font-mono text-warm-300">
+          {getCharacterSummary(activeCharacter)}
+        </span>
         <div className="flex min-w-0 items-center gap-3">
           <div className="flex items-center">
             {phaseOrder.map((phase, index) => {
@@ -74,14 +91,14 @@ export function HeaderBar({
                   >
                     {isComplete ? <Check className="h-3 w-3" /> : index + 1}
                   </div>
-                  {index < phaseOrder.length - 1 && (
+                  {index < phaseOrder.length - 1 ? (
                     <div
                       className={[
                         "h-px w-5 sm:w-7",
                         isComplete ? "bg-amber-600" : "bg-warm-800",
                       ].join(" ")}
                     />
-                  )}
+                  ) : null}
                 </Fragment>
               )
             })}
@@ -93,7 +110,7 @@ export function HeaderBar({
 
         <div className="flex flex-wrap items-center gap-2 text-[10px] font-mono text-warm-300">
           <span className="rounded-md border border-warm-800 bg-warm-900 px-2 py-1">
-            Lv {settings.rogueLevel}
+            Lv {settings.level}
           </span>
           <span className="rounded-md border border-warm-800 bg-warm-900 px-2 py-1">
             Dex {formatSignedNumber(settings.dexModifier)}

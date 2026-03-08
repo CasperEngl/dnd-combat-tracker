@@ -9,6 +9,12 @@ export const createEmptyDicePool = (count: number): DieValue[] =>
 export const allDiceSelected = (values: DieValue[]) =>
   values.every((value) => value !== null)
 
+export const noDiceSelected = (values: DieValue[]) =>
+  values.every((value) => value === null)
+
+export const isDicePoolCommitted = (values: DieValue[]) =>
+  noDiceSelected(values) || allDiceSelected(values)
+
 export const sumDice = (values: DieValue[]) =>
   values.reduce<number>((total, value) => total + (value ?? 0), 0)
 

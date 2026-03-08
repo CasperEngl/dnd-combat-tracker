@@ -1,17 +1,10 @@
+import { createContext, type ReactNode, useContext, useState } from "react"
+import { useRogueTracker } from "~/context/rogue-tracker-context"
 import {
-  createContext,
-  type ReactNode,
-  useCallback,
-  useContext,
-  useMemo,
-  useState,
-} from "react"
-import { useCharacterSettings } from "~/context/character-settings-context"
-import {
-  allDiceSelected,
   createEmptyDicePool,
   type DieValue,
   getWeaponDamageTotal,
+  isDicePoolCommitted,
   sumDice,
   updateDieAtIndex,
 } from "~/lib/dice"
@@ -30,7 +23,6 @@ interface DamageEntryContextValue {
   shortswordSneakDamage: number
   nickSneakDamage: number
   isShortswordHitReady: boolean
-  isNickSneakReady: boolean
   resetSelections: () => void
 }
 
@@ -39,8 +31,7 @@ const DamageEntryContext = createContext<DamageEntryContextValue | undefined>(
 )
 
 export function DamageEntryProvider({ children }: { children: ReactNode }) {
-  const { settings, daggerModifier, sneakAttackDiceCount } =
-    useCharacterSettings()
+  const { settings, daggerModifier, sneakAttackDiceCount } = useRogueTracker()
   const [shortswordWeaponDie, setShortswordWeaponDieState] =
     useState<DieValue>(null)
   const [shortswordSneakDice, setShortswordSneakDice] = useState<DieValue[]>(
@@ -51,50 +42,38 @@ export function DamageEntryProvider({ children }: { children: ReactNode }) {
     createEmptyDicePool(sneakAttackDiceCount),
   )
 
-  const resetSelections = useCallback(() => {
+  const resetSelections = () => {
     setShortswordWeaponDieState(null)
     setShortswordSneakDice(createEmptyDicePool(sneakAttackDiceCount))
     setNickWeaponDieState(null)
     setNickSneakDice(createEmptyDicePool(sneakAttackDiceCount))
-  }, [sneakAttackDiceCount])
+  }
 
-  const value = useMemo(
-    () => ({
-      shortswordWeaponDie,
-      setShortswordWeaponDie: (value: number) =>
-        setShortswordWeaponDieState(value),
-      shortswordSneakDice,
-      setShortswordSneakDie: (index: number, value: number) =>
-        setShortswordSneakDice((current) =>
-          updateDieAtIndex(current, index, value),
-        ),
-      nickWeaponDie,
-      setNickWeaponDie: (value: number) => setNickWeaponDieState(value),
-      nickSneakDice,
-      setNickSneakDie: (index: number, value: number) =>
-        setNickSneakDice((current) => updateDieAtIndex(current, index, value)),
-      shortswordWeaponDamage: getWeaponDamageTotal(
-        shortswordWeaponDie,
-        settings.dexModifier,
+  const value = {
+    shortswordWeaponDie,
+    setShortswordWeaponDie: (value: number) =>
+      setShortswordWeaponDieState(value),
+    shortswordSneakDice,
+    setShortswordSneakDie: (index: number, value: number) =>
+      setShortswordSneakDice((current) =>
+        updateDieAtIndex(current, index, value),
       ),
-      nickWeaponDamage: getWeaponDamageTotal(nickWeaponDie, daggerModifier),
-      shortswordSneakDamage: sumDice(shortswordSneakDice),
-      nickSneakDamage: sumDice(nickSneakDice),
-      isShortswordHitReady:
-        shortswordWeaponDie !== null && allDiceSelected(shortswordSneakDice),
-      isNickSneakReady: allDiceSelected(nickSneakDice),
-      resetSelections,
-    }),
-    [
-      daggerModifier,
-      nickSneakDice,
-      nickWeaponDie,
-      resetSelections,
-      settings.dexModifier,
-      shortswordSneakDice,
+    nickWeaponDie,
+    setNickWeaponDie: (value: number) => setNickWeaponDieState(value),
+    nickSneakDice,
+    setNickSneakDie: (index: number, value: number) =>
+      setNickSneakDice((current) => updateDieAtIndex(current, index, value)),
+    shortswordWeaponDamage: getWeaponDamageTotal(
       shortswordWeaponDie,
-    ],
-  )
+      settings.dexModifier,
+    ),
+    nickWeaponDamage: getWeaponDamageTotal(nickWeaponDie, daggerModifier),
+    shortswordSneakDamage: sumDice(shortswordSneakDice),
+    nickSneakDamage: sumDice(nickSneakDice),
+    isShortswordHitReady:
+      shortswordWeaponDie !== null && isDicePoolCommitted(shortswordSneakDice),
+    resetSelections,
+  }
 
   return (
     <DamageEntryContext.Provider value={value}>
