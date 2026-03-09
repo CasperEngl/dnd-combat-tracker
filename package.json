@@ -13,7 +13,7 @@
     "format": "biome format --write .",
     "format:check": "biome format .",
     "format:fix": "biome format --write .",
-    "react-compiler:check": "bun ./scripts/react-compiler-check.ts",
+    "react-compiler:check": "bun ./packages/react-compiler-check/src/cli.ts",
     "test": "bun run generate:convex-hook-api && bun test",
     "typecheck": "bun run generate:convex-hook-api && react-router typegen && tsc -b",
     "preview": "vite preview build/client"
