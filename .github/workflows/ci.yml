@@ -50,6 +50,9 @@ jobs:
           name: bun-dependencies
           path: .
 
+      - name: Reinstall dependencies
+        run: bun install --frozen-lockfile
+
       - name: Lint
         run: bun run lint
 
@@ -70,6 +73,9 @@ jobs:
         with:
           name: bun-dependencies
           path: .
+
+      - name: Reinstall dependencies
+        run: bun install --frozen-lockfile
 
       - name: React Compiler check
         run: bun run react-compiler:check
@@ -92,6 +98,9 @@ jobs:
           name: bun-dependencies
           path: .
 
+      - name: Reinstall dependencies
+        run: bun install --frozen-lockfile
+
       - name: Format check
         run: bun run format:check
 
@@ -112,6 +121,9 @@ jobs:
         with:
           name: bun-dependencies
           path: .
+
+      - name: Reinstall dependencies
+        run: bun install --frozen-lockfile
 
       - name: Typecheck
         run: bun run typecheck
