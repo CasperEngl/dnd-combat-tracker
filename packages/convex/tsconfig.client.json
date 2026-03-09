@@ -1,0 +1,12 @@
+{
+  "extends": "@dnd-combat-tracker/tsconfig/lib",
+  "compilerOptions": {
+    "composite": true
+  },
+  "include": [
+    "client/**/*.ts",
+    "client/**/*.tsx",
+    "functions/schema.ts",
+    "functions/schemas/**/*.ts"
+  ]
+}

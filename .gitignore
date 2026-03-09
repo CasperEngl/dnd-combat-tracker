@@ -8,8 +8,9 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
-.react-router/
-src/generated/
+apps/web/.react-router/
+apps/web/src/generated/
+packages/convex/functions/_generated/
 build
 dist
 dist-ssr

@@ -30,3 +30,4 @@
 - Do not remove tests just because new app support changes a previous expected failure without actually changing the underlying requirement.
 - Add newly discovered non-obvious rules, debugging traps, persistence constraints, and emerging project conventions to this file.
 - Keep additions short and factual so this file stays useful as a lightweight list of guidelines.
+- Avoid generic `index.ts` and `index.test.ts` names for package implementation files unless the file is intentionally acting as a barrel entrypoint.

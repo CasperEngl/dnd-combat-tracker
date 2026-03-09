@@ -10,11 +10,26 @@ import {
   readConvexModuleNames,
 } from "./index"
 
-function writeConvexHookApiFileEffect(projectRoot: string, outputPath: string) {
+function normalizeRelativeImportPath(value: string) {
+  const normalizedPath = value.split(path.sep).join("/")
+
+  if (normalizedPath.startsWith(".")) {
+    return normalizedPath
+  }
+
+  return `./${normalizedPath}`
+}
+
+function writeConvexHookApiFileEffect(
+  projectRoot: string,
+  functionsDir: string,
+  outputPath: string,
+) {
   return Effect.gen(function* () {
+    const resolvedFunctionsDir = path.join(projectRoot, functionsDir)
     const apiDeclarationPath = path.join(
-      projectRoot,
-      "convex/_generated/api.d.ts",
+      resolvedFunctionsDir,
+      "_generated/api.d.ts",
     )
     const apiDeclaration = yield* Effect.tryPromise(() =>
       readFile(apiDeclarationPath, "utf8"),
@@ -23,7 +38,7 @@ function writeConvexHookApiFileEffect(projectRoot: string, outputPath: string) {
     const modules = yield* Effect.tryPromise(() =>
       Promise.all(
         moduleNames.map(async (moduleName) => {
-          const modulePath = path.join(projectRoot, `convex/${moduleName}.ts`)
+          const modulePath = path.join(resolvedFunctionsDir, `${moduleName}.ts`)
           const moduleSource = await readFile(modulePath, "utf8")
 
           return {
@@ -37,44 +52,71 @@ function writeConvexHookApiFileEffect(projectRoot: string, outputPath: string) {
     yield* Effect.tryPromise(() =>
       mkdir(path.dirname(outputPath), { recursive: true }),
     )
+    const generatedApiImportPath = normalizeRelativeImportPath(
+      path.relative(
+        path.dirname(outputPath),
+        path.join(resolvedFunctionsDir, "_generated/api.js"),
+      ),
+    )
     yield* Effect.tryPromise(() =>
-      writeFile(outputPath, generateConvexHookApiSource(modules)),
+      writeFile(
+        outputPath,
+        generateConvexHookApiSource(modules, {
+          apiImportPath: generatedApiImportPath,
+        }),
+      ),
     )
   })
 }
 
 export async function writeConvexHookApiFile(
   projectRoot: string,
-  outputPath = path.join(projectRoot, "src/generated/convex-hook-api.tsx"),
+  functionsDir = "packages/convex/functions",
+  outputPath = path.join(projectRoot, "packages/convex/client/hook-api.tsx"),
 ) {
-  await Effect.runPromise(writeConvexHookApiFileEffect(projectRoot, outputPath))
+  await Effect.runPromise(
+    writeConvexHookApiFileEffect(projectRoot, functionsDir, outputPath),
+  )
 }
 
 const projectRootOption = Options.text("project-root").pipe(
   Options.withAlias("p"),
   Options.withDescription(
-    "Project root containing convex and src directories.",
+    "Project root containing the workspace and convex configuration.",
   ),
   Options.withDefault("."),
+)
+
+const functionsDirOption = Options.text("functions-dir").pipe(
+  Options.withAlias("f"),
+  Options.withDescription(
+    "Convex functions directory relative to project root.",
+  ),
+  Options.withDefault("packages/convex/functions"),
 )
 
 const outputOption = Options.text("out").pipe(
   Options.withAlias("o"),
   Options.withDescription("Output file path relative to project root."),
-  Options.withDefault("src/generated/convex-hook-api.tsx"),
+  Options.withDefault("packages/convex/client/hook-api.tsx"),
 )
 
 const generateCommand = Command.make(
   "generate",
   {
+    functionsDir: functionsDirOption,
     out: outputOption,
     projectRoot: projectRootOption,
   },
-  ({ out, projectRoot }) => {
+  ({ functionsDir, out, projectRoot }) => {
     const resolvedProjectRoot = path.resolve(projectRoot)
     const resolvedOutputPath = path.resolve(resolvedProjectRoot, out)
 
-    return writeConvexHookApiFileEffect(resolvedProjectRoot, resolvedOutputPath)
+    return writeConvexHookApiFileEffect(
+      resolvedProjectRoot,
+      functionsDir,
+      resolvedOutputPath,
+    )
   },
 ).pipe(Command.withDescription("Generate the typed Convex hook API module."))
 

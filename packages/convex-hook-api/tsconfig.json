@@ -1,0 +1,7 @@
+{
+  "extends": "@dnd-combat-tracker/tsconfig/lib",
+  "compilerOptions": {
+    "types": ["bun", "node"]
+  },
+  "include": ["src/**/*.ts"]
+}

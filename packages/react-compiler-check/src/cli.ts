@@ -2,7 +2,7 @@ import process from "node:process"
 import { Args, Command, Options } from "@effect/cli"
 import { NodeContext, NodeRuntime } from "@effect/platform-node"
 import { Effect } from "effect"
-import { runReactCompilerCheck } from "./index"
+import { runReactCompilerCheck } from "./react-compiler-check"
 
 const targetPathArg = Args.text({ name: "path" }).pipe(
   Args.withDefault("src"),

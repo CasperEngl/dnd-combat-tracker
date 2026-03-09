@@ -3,13 +3,14 @@
   "files": {
     "includes": [
       "**",
-      "!build",
-      "!dist",
+      "!**/build",
+      "!**/dist",
       "!node_modules",
-      "!convex/_generated",
-      "!.react-router",
+      "!packages/convex/functions/_generated",
+      "!apps/web/.react-router",
       "!.tmp",
-      "!src/generated"
+      "!apps/web/src/generated",
+      "!packages/convex/client/hook-api.tsx"
     ]
   },
   "formatter": {
