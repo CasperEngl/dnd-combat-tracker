@@ -1,9 +1,9 @@
 import { getAuthUserId } from "@convex-dev/auth/server"
-import { mutationGeneric } from "convex/server"
 import { v } from "convex/values"
 import { Effect } from "effect"
+import { mutation } from "./_generated/server"
 
-export const upsertRogueSettings = mutationGeneric({
+export const upsertRogueSettings = mutation({
   args: {
     characterId: v.id("characters"),
     dexModifier: v.number(),

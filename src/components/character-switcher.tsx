@@ -1,20 +1,20 @@
 import { ChevronDown } from "lucide-react"
-import type { CharacterRecord } from "~/lib/character-record"
+import type { CharacterId, CharacterRecord } from "~/lib/character-record"
 
 export function CharacterSwitcher({
   activeCharacterId,
   characters,
   onChange,
 }: {
-  activeCharacterId: string
+  activeCharacterId: CharacterId
   characters: CharacterRecord[]
-  onChange: (characterId: string) => void
+  onChange: (characterId: CharacterId) => void
 }) {
   return (
     <label className="relative flex min-w-[180px] items-center rounded-lg border border-warm-700 bg-warm-900 text-warm-100">
       <select
         className="h-8 w-full cursor-pointer rounded-lg bg-transparent px-3 pr-8 text-sm outline-none"
-        onChange={(event) => onChange(event.target.value)}
+        onChange={(event) => onChange(event.target.value as CharacterId)}
         value={activeCharacterId}
       >
         {characters.map((character) => (

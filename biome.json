@@ -1,7 +1,14 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.4.6/schema.json",
   "files": {
-    "includes": ["**", "!dist", "!node_modules", "!convex/_generated"]
+    "includes": [
+      "**",
+      "!build",
+      "!dist",
+      "!node_modules",
+      "!convex/_generated",
+      "!.react-router"
+    ]
   },
   "formatter": {
     "enabled": true,
@@ -19,6 +26,24 @@
           }
         },
         "useHookAtTopLevel": "error"
+      },
+      "style": {
+        "noRestrictedImports": {
+          "level": "error",
+          "options": {
+            "paths": {
+              "convex/server": {
+                "importNames": [
+                  "queryGeneric",
+                  "mutationGeneric",
+                  "internalQueryGeneric",
+                  "internalMutationGeneric"
+                ],
+                "message": "Use the typed builders from ./_generated/server so Convex schema types flow into ctx.db."
+              }
+            }
+          }
+        }
       }
     }
   },

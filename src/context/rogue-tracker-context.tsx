@@ -1,10 +1,9 @@
-import { useMutation } from "convex/react"
 import { createContext, type ReactNode, useContext } from "react"
+import { useUpsertRogueSettings } from "~/context/app-services-context"
 import type {
   CharacterRecord,
   RogueSettingsRecord,
 } from "~/lib/character-record"
-import { convexApi } from "~/lib/convex-api"
 import {
   clampDexModifier,
   getSneakAttackDiceCount,
@@ -41,9 +40,7 @@ export function RogueTrackerProvider({
   rogueSettings: RogueSettingsRecord | null
   children: ReactNode
 }) {
-  const persistSettings = useMutation(
-    convexApi.characterSettings.upsertRogueSettings,
-  )
+  const persistSettings = useUpsertRogueSettings()
   const settings = buildSettings(character, rogueSettings)
 
   const saveSettings = async (nextSettings: RogueTrackerSettings) => {

@@ -1,9 +1,9 @@
-import { useAuthActions } from "@convex-dev/auth/react"
 import { useForm } from "@tanstack/react-form"
 import { useState } from "react"
 import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
+import { useAuthActions } from "~/context/app-services-context"
 
 type AuthFormValues = {
   email: string
@@ -35,7 +35,7 @@ export function AuthForm() {
   })
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(245,158,11,0.12),_transparent_38%),linear-gradient(180deg,_#2c0f06,_#1d0a04)] px-4 py-10 text-warm-100">
+    <div className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.12),transparent_38%),linear-gradient(180deg,#2c0f06,#1d0a04)] px-4 py-10 text-warm-100">
       <div className="w-full max-w-md rounded-2xl border border-warm-700 bg-warm-900/95 p-6 shadow-2xl shadow-black/30">
         <p className="text-[10px] font-mono font-semibold uppercase tracking-[0.25em] text-amber-400">
           Convex Auth

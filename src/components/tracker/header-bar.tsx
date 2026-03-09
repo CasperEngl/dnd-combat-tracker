@@ -1,8 +1,9 @@
 import { Check, SlidersHorizontal } from "lucide-react"
 import { Fragment } from "react"
+import { Link } from "react-router"
 import { CharacterSwitcher } from "~/components/character-switcher"
-import { Button } from "~/components/ui/button"
-import type { CharacterRecord } from "~/lib/character-record"
+import { Button, buttonVariants } from "~/components/ui/button"
+import type { CharacterId, CharacterRecord } from "~/lib/character-record"
 import { getCharacterSummary } from "~/lib/character-record"
 import { formatSignedNumber } from "~/lib/dice"
 import type { RogueTrackerSettings } from "~/lib/rogue-tracker"
@@ -34,20 +35,20 @@ interface HeaderBarProps {
   activeCharacter: CharacterRecord
   characters: CharacterRecord[]
   currentPhase: TurnPhase
-  onOpenSettings: () => void
   onReset: () => void
-  onSetActiveCharacter: (characterId: string) => void
+  onSetActiveCharacter: (characterId: CharacterId) => void
   settings: RogueTrackerSettings
+  settingsHref: string
 }
 
 export function HeaderBar({
   activeCharacter,
   characters,
   currentPhase,
-  onOpenSettings,
   onReset,
   onSetActiveCharacter,
   settings,
+  settingsHref,
 }: HeaderBarProps) {
   const currentPhaseIndex = phaseOrder.indexOf(currentPhase)
 
@@ -122,16 +123,18 @@ export function HeaderBar({
       </div>
 
       <div className="ml-auto flex items-center gap-2">
-        <Button
-          className="border-warm-700 bg-warm-900 text-warm-100 hover:bg-warm-800 hover:text-warm-50"
-          onClick={onOpenSettings}
-          size="sm"
-          type="button"
-          variant="outline"
+        <Link
+          className={buttonVariants({
+            variant: "outline",
+            size: "sm",
+            className:
+              "border-warm-700 bg-warm-900 text-warm-100 hover:bg-warm-800 hover:text-warm-50",
+          })}
+          to={settingsHref}
         >
           <SlidersHorizontal className="h-4 w-4" />
           Settings
-        </Button>
+        </Link>
         <Button
           className="border-warm-700 bg-warm-900 text-warm-100 hover:bg-warm-800 hover:text-warm-50"
           onClick={onReset}

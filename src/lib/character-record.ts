@@ -1,33 +1,25 @@
-export interface CharacterRecord {
-  _id: string
-  name: string
-  className: string
-  classSlug: string
-  subclassName?: string
-  level: number
-  turnMachineSlug?: string
-  status: "ready" | "needs-tracker" | "archived"
-}
+import type { api } from "@convex/_generated/api"
+import type { Doc, Id } from "@convex/_generated/dataModel"
+import type { FunctionArgs, FunctionReturnType } from "convex/server"
 
-export interface RogueSettingsRecord {
-  _id?: string
-  characterId: string
-  trackerSlug: "rogue"
-  dexModifier: number
-  applyDexToBothWeapons: boolean
-}
-
-export interface AppStateRecord {
-  activeCharacter: CharacterRecord | null
-  activeRogueSettings: RogueSettingsRecord | null
-  characters: CharacterRecord[]
-}
-
-export interface CharacterFormValues {
-  name: string
-  className: string
+export type CharacterId = Id<"characters">
+export type CharacterSettingsId = Id<"characterSettings">
+export type CharacterRecord = Doc<"characters">
+export type RogueSettingsRecord = Doc<"characterSettings">
+export type AppStateRecord = FunctionReturnType<
+  typeof api.characters.getAppState
+>
+export type CharacterPageStateRecord = FunctionReturnType<
+  typeof api.characters.getCharacterPageState
+>
+export type CharacterMutationValues = FunctionArgs<
+  typeof api.characters.createCharacter
+>
+export type CharacterFormValues = Omit<
+  CharacterMutationValues,
+  "subclassName"
+> & {
   subclassName: string
-  level: number
 }
 
 export const getCharacterSummary = (character: CharacterRecord) =>

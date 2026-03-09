@@ -1,7 +1,7 @@
 import { getAuthUserId } from "@convex-dev/auth/server"
-import { mutationGeneric, queryGeneric } from "convex/server"
 import { v } from "convex/values"
 import { Effect } from "effect"
+import { mutation, query } from "./_generated/server"
 import {
   clampCharacterLevel,
   normalizeCharacterName,
@@ -10,9 +10,9 @@ import {
   resolveCharacterStatus,
   resolveTurnMachineSlug,
   toClassSlug,
-} from "./character_model"
+} from "./characterModel"
 
-export const getAppState = queryGeneric({
+export const getAppState = query({
   args: {},
   handler: async (ctx) => {
     return await Effect.gen(function* () {
@@ -20,6 +20,7 @@ export const getAppState = queryGeneric({
 
       if (!userId) {
         return {
+          activeCharacterId: null,
           activeCharacter: null,
           activeRogueSettings: null,
           characters: [],
@@ -60,6 +61,7 @@ export const getAppState = queryGeneric({
           : null
 
       return {
+        activeCharacterId: activeCharacter?._id ?? null,
         activeCharacter,
         activeRogueSettings,
         characters,
@@ -68,7 +70,62 @@ export const getAppState = queryGeneric({
   },
 })
 
-export const createCharacter = mutationGeneric({
+export const getCharacterPageState = query({
+  args: {
+    characterId: v.id("characters"),
+  },
+  handler: async (ctx, args) => {
+    return await Effect.gen(function* () {
+      const userId = yield* Effect.promise(() => getAuthUserId(ctx))
+
+      if (!userId) {
+        return {
+          activeCharacterId: null,
+          character: null,
+          characterRogueSettings: null,
+          characters: [],
+        }
+      }
+
+      const characters = yield* Effect.promise(() =>
+        ctx.db
+          .query("characters")
+          .withIndex("by_user_id", (q) => q.eq("userId", userId))
+          .collect(),
+      )
+      const preferences = yield* Effect.promise(() =>
+        ctx.db
+          .query("userPreferences")
+          .withIndex("by_user_id", (q) => q.eq("userId", userId))
+          .unique(),
+      )
+      const character =
+        characters.find((entry) => entry._id === args.characterId) ?? null
+      const characterRogueSettings =
+        character?.turnMachineSlug === "rogue"
+          ? yield* Effect.promise(() =>
+              ctx.db
+                .query("characterSettings")
+                .withIndex("by_character_id", (q) =>
+                  q.eq("characterId", character._id),
+                )
+                .filter((q) => q.eq(q.field("trackerSlug"), "rogue"))
+                .first(),
+            )
+          : null
+
+      return {
+        activeCharacterId:
+          preferences?.activeCharacterId ?? characters[0]?._id ?? null,
+        character,
+        characterRogueSettings,
+        characters,
+      }
+    }).pipe(Effect.runPromise)
+  },
+})
+
+export const createCharacter = mutation({
   args: {
     name: v.string(),
     className: v.string(),
@@ -151,7 +208,7 @@ export const createCharacter = mutationGeneric({
   },
 })
 
-export const updateCharacter = mutationGeneric({
+export const updateCharacter = mutation({
   args: {
     characterId: v.id("characters"),
     name: v.string(),
@@ -222,7 +279,7 @@ export const updateCharacter = mutationGeneric({
   },
 })
 
-export const setActiveCharacter = mutationGeneric({
+export const setActiveCharacter = mutation({
   args: {
     characterId: v.id("characters"),
   },

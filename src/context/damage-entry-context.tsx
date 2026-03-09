@@ -1,4 +1,10 @@
-import { createContext, type ReactNode, useContext, useState } from "react"
+import {
+  createContext,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useState,
+} from "react"
 import { useRogueTracker } from "~/context/rogue-tracker-context"
 import {
   createEmptyDicePool,
@@ -42,12 +48,12 @@ export function DamageEntryProvider({ children }: { children: ReactNode }) {
     createEmptyDicePool(sneakAttackDiceCount),
   )
 
-  const resetSelections = () => {
+  const resetSelections = useCallback(() => {
     setShortswordWeaponDieState(null)
     setShortswordSneakDice(createEmptyDicePool(sneakAttackDiceCount))
     setNickWeaponDieState(null)
     setNickSneakDice(createEmptyDicePool(sneakAttackDiceCount))
-  }
+  }, [sneakAttackDiceCount])
 
   const value = {
     shortswordWeaponDie,

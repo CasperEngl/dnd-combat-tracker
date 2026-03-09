@@ -16,6 +16,8 @@
 - Remove outdated logic instead of preserving backwards-compatibility code paths by default.
 - If removing or reshaping old behavior could affect persisted user data or user characters, stop and get user approval before proceeding.
 - Do not use the `any` type; redesign the solution instead.
+- Prefer passing specific values as props instead of whole objects when practical.
+- Prefer component composition over passing props when it clarifies ownership; only default to component-as-prop patterns when you truly need slots.
 - Prefer Inversion of Control over hardcoded feature wiring so trackers, classes, and services stay pluggable.
 - Follow `react.dev/learn/you-might-not-need-an-effect`; save persistent state from explicit events instead of synchronization effects.
 - The project targets React Compiler; do not add manual memoization with `useMemo`, `useCallback`, or similar escape hatches.

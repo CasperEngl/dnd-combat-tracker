@@ -6,7 +6,8 @@
     "module": "ESNext",
     "baseUrl": ".",
     "paths": {
-      "~/*": ["./src/*"]
+      "~/*": ["./src/*"],
+      "@convex/*": ["./convex/*"]
     },
     "skipLibCheck": true,
     "moduleResolution": "bundler",
@@ -16,11 +17,12 @@
     "moduleDetection": "force",
     "noEmit": true,
     "jsx": "react-jsx",
+    "rootDirs": [".", "./.react-router/types"],
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["src"]
+  "include": ["src", ".react-router/types/**/*"]
 }

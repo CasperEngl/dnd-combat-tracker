@@ -9,8 +9,8 @@
  */
 
 import type * as auth from "../auth.js";
-import type * as character_model from "../character_model.js";
-import type * as character_settings from "../character_settings.js";
+import type * as characterModel from "../characterModel.js";
+import type * as characterSettings from "../characterSettings.js";
 import type * as characters from "../characters.js";
 import type * as http from "../http.js";
 
@@ -22,8 +22,8 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
-  character_model: typeof character_model;
-  character_settings: typeof character_settings;
+  characterModel: typeof characterModel;
+  characterSettings: typeof characterSettings;
   characters: typeof characters;
   http: typeof http;
 }>;
