@@ -65,13 +65,32 @@ export function generateConvexDependenciesSource(
     convexReactImports.push("type ReactAction")
   }
 
-  const actionDependencyType =
+  const dependencyTypeDefinitions = [
+    `type QueryDependency<Query extends FunctionReference<"query">> = (
+  ...args: OptionalRestArgsOrSkip<Query>
+) => Query["_returnType"] | undefined`,
+    `type MutationDependency<Mutation extends FunctionReference<"mutation">> =
+  () => ReactMutation<Mutation>`,
     actionModules.length > 0
-      ? `
-
-type ActionDependency<Action extends FunctionReference<"action">> = () =>
-  ReactAction<Action>`
-      : ""
+      ? `type ActionDependency<Action extends FunctionReference<"action">> =
+  () => ReactAction<Action>`
+      : null,
+  ]
+  const dependencySections = [
+    renderDependencyTypeSection(queryModules, "query"),
+    renderDependencyTypeSection(mutationModules, "mutation"),
+    renderDependencyTypeSection(actionModules, "action"),
+  ].filter((section) => section.length > 0)
+  const generatedHooks = [
+    renderGeneratedHooks(queryModules, "query"),
+    renderGeneratedHooks(mutationModules, "mutation"),
+    renderGeneratedHooks(actionModules, "action"),
+  ].filter((section) => section.length > 0)
+  const apiSections = [
+    renderApiObjectSection(queryModules, "query"),
+    renderApiObjectSection(mutationModules, "mutation"),
+    renderApiObjectSection(actionModules, "action"),
+  ].filter((section) => section.length > 0)
 
   return `${generatedHeader}
 
@@ -83,22 +102,14 @@ import {
 import type { FunctionReference } from "convex/server"
 import { createContext, type ReactNode, useContext } from "react"
 
-type QueryDependency<Query extends FunctionReference<"query">> = (
-  ...args: OptionalRestArgsOrSkip<Query>
-) => Query["_returnType"] | undefined
-
-type MutationDependency<Mutation extends FunctionReference<"mutation">> = () =>
-  ReactMutation<Mutation>
-${actionDependencyType}
+${dependencyTypeDefinitions.filter((definition) => definition !== null).join("\n\n")}
 
 type ConvexDependencies = {
   auth?: {
     actions?: () => ReturnType<typeof useBaseConvexAuthActions>
     state?: () => ReturnType<typeof useConvexAuth>
   }
-${renderDependencyTypeSection(queryModules, "query")}
-${renderDependencyTypeSection(mutationModules, "mutation")}
-${renderDependencyTypeSection(actionModules, "action")}
+${dependencySections.join("\n")}
 }
 
 const defaultConvexApi = {}
@@ -113,7 +124,9 @@ function ConvexApiProvider({
   value: ConvexDependencies
 }) {
   return (
-    <ConvexApiContext.Provider value={value}>{children}</ConvexApiContext.Provider>
+    <ConvexApiContext.Provider value={value}>
+      {children}
+    </ConvexApiContext.Provider>
   )
 }
 
@@ -135,9 +148,7 @@ function useAuthState() {
   return overrides.auth?.state?.() ?? authState
 }
 
-${renderGeneratedHooks(queryModules, "query")}
-${renderGeneratedHooks(mutationModules, "mutation")}
-${renderGeneratedHooks(actionModules, "action")}
+${generatedHooks.join("\n\n")}
 
 export const convexApi = {
   Provider: ConvexApiProvider,
@@ -146,9 +157,7 @@ export const convexApi = {
     useActions: useAuthActions,
     useState: useAuthState,
   },
-${renderApiObjectSection(queryModules, "query")}
-${renderApiObjectSection(mutationModules, "mutation")}
-${renderApiObjectSection(actionModules, "action")}
+${apiSections.join("\n")}
 }
 `
 }
@@ -173,15 +182,18 @@ function renderDependencyTypeSection(
     }
 
     const exportLines = exportsByKind
-      .map(
-        (entry) =>
-          `${entry.name}?: ${dependencyType}<typeof api.${moduleDefinition.name}.${entry.name}>`,
+      .map((entry) =>
+        formatDependencyReferenceLine(
+          entry.name,
+          dependencyType,
+          `typeof api.${moduleDefinition.name}.${entry.name}`,
+        ),
       )
-      .join("\n        ")
+      .join("\n")
 
-    return `      ${moduleDefinition.name}?: {
-        ${exportLines}
-      }`
+    return `    ${moduleDefinition.name}?: {
+${exportLines}
+    }`
   })
 
   return `  ${collectionName}?: {
@@ -222,26 +234,41 @@ function renderGeneratedHook(
   ...args: OptionalRestArgsOrSkip<typeof ${referencePath}>
 ) {
   const overrides = useApiDependencies()
+  const override = ${overridePath}
   const queryResult = useQuery(${referencePath}, args[0])
 
-  return ${overridePath}?.(...args) ?? queryResult
+  if (override) {
+    return override(...args)
+  }
+
+  return queryResult
 }`
   }
 
   if (kind === "mutation") {
     return `function ${implementationHookName}() {
   const overrides = useApiDependencies()
+  const override = ${overridePath}
   const mutation = useMutation(${referencePath})
 
-  return ${overridePath}?.() ?? mutation
+  if (override) {
+    return override()
+  }
+
+  return mutation
 }`
   }
 
   return `function ${implementationHookName}() {
   const overrides = useApiDependencies()
+  const override = ${overridePath}
   const action = useAction(${referencePath})
 
-  return ${overridePath}?.() ?? action
+  if (override) {
+    return override()
+  }
+
+  return action
 }`
 }
 
@@ -268,11 +295,11 @@ function renderApiObjectSection(
         (entry) =>
           `${toPublicHookName(entry.name, kind)}: ${toImplementationHookName(moduleDefinition.name, entry.name, kind)},`,
       )
-      .join("\n        ")
+      .join("\n      ")
 
     return `    ${moduleDefinition.name}: {
-        ${exportLines}
-      },`
+      ${exportLines}
+    },`
   })
 
   return `  ${collectionName}: {
@@ -319,6 +346,22 @@ function toPascalCase(value: string) {
   )
 }
 
+function formatDependencyReferenceLine(
+  propertyName: string,
+  dependencyType: string,
+  referenceType: string,
+) {
+  const singleLine = `      ${propertyName}?: ${dependencyType}<${referenceType}>`
+
+  if (singleLine.length <= 80) {
+    return singleLine
+  }
+
+  return `      ${propertyName}?: ${dependencyType}<
+        ${referenceType}
+      >`
+}
+
 export async function writeConvexDependenciesFile(projectRoot: string) {
   const apiDeclarationPath = path.join(
     projectRoot,
@@ -339,6 +382,7 @@ export async function writeConvexDependenciesFile(projectRoot: string) {
   )
 
   const outputPath = path.join(projectRoot, "src/generated/convex-api.tsx")
+
   await mkdir(path.dirname(outputPath), { recursive: true })
   await writeFile(outputPath, generateConvexDependenciesSource(modules))
 }
