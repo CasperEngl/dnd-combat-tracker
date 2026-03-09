@@ -1,9 +1,11 @@
 import { describe, expect, test } from "bun:test"
-import { spawn } from "node:child_process"
-import { readFile } from "node:fs/promises"
+import { mkdir, readFile, rm } from "node:fs/promises"
 import path from "node:path"
 import * as BabelParser from "@babel/parser"
 import type { File, ObjectExpression } from "@babel/types"
+import * as PlatformCommand from "@effect/platform/Command"
+import * as NodeContext from "@effect/platform-node/NodeContext"
+import { Effect } from "effect"
 import {
   buildConvexHookApiModel,
   classifyConvexExports,
@@ -12,6 +14,24 @@ import {
 } from "./src/index"
 
 const projectRoot = path.resolve(import.meta.dir, "..", "..")
+
+function runCommandExitCode(command: PlatformCommand.Command) {
+  return Effect.runPromise(
+    PlatformCommand.exitCode(command).pipe(Effect.provide(NodeContext.layer)),
+  )
+}
+
+function runCommandString(command: PlatformCommand.Command) {
+  return Effect.runPromise(
+    PlatformCommand.string(command).pipe(Effect.provide(NodeContext.layer)),
+  )
+}
+
+function makeCommand(executable: string, args: string[], cwd = projectRoot) {
+  return PlatformCommand.make(executable, ...args).pipe(
+    PlatformCommand.workingDirectory(cwd),
+  )
+}
 
 function getObjectPropertyNames(value: ObjectExpression) {
   return value.properties.flatMap((property) => {
@@ -38,7 +58,7 @@ function getFunctionDeclaration(
   )
 }
 
-describe("generate-convex-dependencies", () => {
+describe("convex-hook-api", () => {
   test("discovers convex module names from the generated api declaration", async () => {
     const apiDeclaration = await readFile(
       path.join(projectRoot, "convex/_generated/api.d.ts"),
@@ -398,43 +418,65 @@ export const delegatedThing = localQuery({
       },
     ])
 
-    const formattedSource = await new Promise<string>((resolve, reject) => {
-      const child = spawn(
-        "bunx",
-        [
-          "biome",
-          "format",
-          "--stdin-file-path",
-          "src/generated/convex-hook-api.tsx",
-        ],
-        {
-          cwd: projectRoot,
-          stdio: ["pipe", "pipe", "pipe"],
-        },
-      )
-
-      let stdout = ""
-      let stderr = ""
-
-      child.stdout.on("data", (chunk: Buffer | string) => {
-        stdout += chunk.toString()
-      })
-      child.stderr.on("data", (chunk: Buffer | string) => {
-        stderr += chunk.toString()
-      })
-      child.on("error", reject)
-      child.on("close", (code) => {
-        if (code === 0) {
-          resolve(stdout)
-          return
-        }
-
-        reject(new Error(stderr || `Biome exited with code ${code}`))
-      })
-
-      child.stdin.end(source)
-    })
+    const formattedSource = await runCommandString(
+      makeCommand("bunx", [
+        "biome",
+        "format",
+        "--stdin-file-path",
+        "src/generated/convex-hook-api.tsx",
+      ]).pipe(PlatformCommand.feed(source)),
+    )
 
     expect(source).toBe(formattedSource)
+  })
+
+  test("cli generate supports project root and output options", async () => {
+    const outputPath = path.join(
+      projectRoot,
+      ".tmp/convex-hook-api-cli-output.tsx",
+    )
+
+    await mkdir(path.dirname(outputPath), { recursive: true })
+    await rm(outputPath, { force: true })
+
+    const exitCode = await runCommandExitCode(
+      makeCommand("bun", [
+        "./packages/convex-hook-api/src/cli.ts",
+        "generate",
+        "--project-root",
+        ".",
+        "--out",
+        ".tmp/convex-hook-api-cli-output.tsx",
+      ]),
+    )
+
+    expect(Number(exitCode)).toBe(0)
+
+    const generatedSource = await readFile(outputPath, "utf8")
+
+    expect(generatedSource).toContain("export const hookApi = {")
+    expect(generatedSource).toContain("function HookApiProvider(")
+
+    await rm(outputPath, { force: true })
+  })
+
+  test("cli generate fails for an invalid project root", async () => {
+    const missingProjectRoot = path.join(
+      projectRoot,
+      ".tmp/convex-hook-api-missing-project",
+    )
+
+    await rm(missingProjectRoot, { force: true, recursive: true })
+
+    const exitCode = await runCommandExitCode(
+      makeCommand("bun", [
+        "./packages/convex-hook-api/src/cli.ts",
+        "generate",
+        "--project-root",
+        missingProjectRoot,
+      ]),
+    )
+
+    expect(Number(exitCode)).not.toBe(0)
   })
 })

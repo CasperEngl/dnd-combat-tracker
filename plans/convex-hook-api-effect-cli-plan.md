@@ -2,7 +2,7 @@
 
 ## Goal
 
-Move the package CLI to Effect (`@effect/cli`) and finish the internal naming cleanup from `convex-dependencies` to `convex-hook-api` while preserving current generation behavior.
+Move the package CLI to Effect (`@effect/cli`) and finish the internal naming cleanup around `convex-hook-api` while preserving current generation behavior.
 
 ## Scope
 
@@ -32,8 +32,8 @@ This section captures the full scope of work completed in this session and what 
   - `packages/convex-hook-api/src/index.ts`
   - `packages/convex-hook-api/src/cli.ts`
 - Moved repo generation script entrypoint to package CLI in root `package.json`.
-- Deleted old monolithic script: `scripts/generate-convex-dependencies.ts`.
-- Added model-level test coverage in `scripts/generate-convex-dependencies.test.ts`.
+- Deleted the old monolithic generator script in `scripts/` and replaced it with the package CLI.
+- Added model-level test coverage in `packages/convex-hook-api/generate-convex-hook-api.test.ts`.
 - Migrated `classifyConvexExports()` from regex to AST parsing (handles TS wrappers like `as`, `satisfies`, parenthesized expressions).
 - Added parser edge-case test for wrapped exported handlers.
 - Added `outdent` and applied it across major multiline template builders in `packages/convex-hook-api/src/generate-source.ts`.
@@ -52,8 +52,8 @@ This section captures the full scope of work completed in this session and what 
 ### Validation Already Performed
 
 - Repeatedly passed:
-  - `bun test scripts/generate-convex-dependencies.test.ts`
-  - `bun run generate:convex-dependencies`
+  - `bun test packages/convex-hook-api/generate-convex-hook-api.test.ts`
+  - `bun run generate:convex-hook-api`
 - Biome-format regression test passes for generated output.
 - Known unrelated failure observed earlier:
   - `bun run typecheck` failed on `src/lib/character-model.test.ts` unused symbol (`resolveCharacterStatus`), outside generator scope.
@@ -67,15 +67,9 @@ This section captures the full scope of work completed in this session and what 
 
 ### Remaining Work For Next Pass
 
-1. Convert `packages/convex-hook-api/src/cli.ts` to Effect CLI (`@effect/cli` + `@effect/platform-node`) with:
-   - root command: `convex-hook-api`
-   - subcommand: `generate`
-   - options: `--project-root`, `--out`
-2. Rename internal script/test naming from `convex-dependencies` to `convex-hook-api`:
-   - root `package.json` scripts
-   - generated header regen command text in `packages/convex-hook-api/src/generate-source.ts`
-   - test filename and `describe(...)` label
-3. Add CLI smoke test coverage once Effect CLI is introduced.
+1. Update this handoff plan as follow-up work lands so it stays accurate.
+2. Decide whether to move `packages/convex-hook-api/src/generate-source.ts` from parse-then-print AST emission to direct `@babel/types` node construction.
+3. Add publish-oriented package metadata and docs under `packages/convex-hook-api/` when the package is ready to ship.
 
 ### Optional Follow-Up (Not Required For Immediate Handoff)
 
@@ -95,7 +89,7 @@ This section captures the full scope of work completed in this session and what 
 
 ### 1) CLI Conversion
 
-- Update `packages/convex-hook-api/src/cli.ts`:
+- Implemented in `packages/convex-hook-api/src/cli.ts`:
   - Build an Effect command tree:
     - root command: `convex-hook-api`
     - subcommand: `generate`
@@ -109,25 +103,24 @@ This section captures the full scope of work completed in this session and what 
 
 ### 2) Internal Rename Cleanup
 
-- Update script naming in `package.json`:
-  - rename `generate:convex-dependencies` to `generate:convex-hook-api`
-  - update script references (`postinstall`, `dev`, `build`, `lint`, `test`, `typecheck`).
-- Update generated header in `packages/convex-hook-api/src/generate-source.ts`:
-  - `To regenerate, run: bun run generate:convex-hook-api`
-- Rename test file:
-  - `scripts/generate-convex-dependencies.test.ts` -> `scripts/generate-convex-hook-api.test.ts`
-- Update test `describe(...)` name and import paths after rename.
+- Implemented:
+  - renamed root script in `package.json` to `generate:convex-hook-api`
+  - updated `postinstall`, `dev`, `build`, `lint`, `test`, `typecheck`
+  - updated generated header in `packages/convex-hook-api/src/generate-source.ts`
+  - renamed test file to `packages/convex-hook-api/generate-convex-hook-api.test.ts`
+  - updated test `describe(...)` name and import paths
 
 ### 3) Docs/Entrypoint Consistency
 
-- Ensure `packages/convex-hook-api/package.json` bin/export entries still point to the CLI entry.
-- Keep generated output target defaulting to `src/generated/convex-hook-api.tsx`.
+- Implemented:
+  - `packages/convex-hook-api/package.json` bin/export entries point to the CLI entry
+  - generated output target defaults to `src/generated/convex-hook-api.tsx`
 
 ## Validation
 
 Run after implementing:
 
-1. `bun test scripts/generate-convex-hook-api.test.ts`
+1. `bun test packages/convex-hook-api/generate-convex-hook-api.test.ts`
 2. `bun run generate:convex-hook-api`
 3. Optional smoke run with custom args:
    - `bun ./packages/convex-hook-api/src/cli.ts generate --project-root . --out src/generated/convex-hook-api.tsx`

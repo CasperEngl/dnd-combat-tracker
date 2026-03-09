@@ -3,9 +3,34 @@ import type { CallExpression, Expression, Identifier } from "@babel/types"
 import type { ConvexFunctionKind, ConvexModuleExport } from "./types"
 
 export function readConvexModuleNames(sourceText: string) {
-  return [...sourceText.matchAll(/import type \* as (\w+) from "\.\.\//g)].map(
-    (match) => match[1],
-  )
+  const ast = BabelParser.parse(sourceText, {
+    plugins: ["typescript"],
+    sourceType: "module",
+  })
+
+  return ast.program.body.flatMap((statement) => {
+    if (statement.type !== "ImportDeclaration") {
+      return []
+    }
+
+    if (statement.importKind !== "type") {
+      return []
+    }
+
+    if (!statement.source.value.startsWith("../")) {
+      return []
+    }
+
+    const namespaceSpecifier = statement.specifiers.find(
+      (specifier) => specifier.type === "ImportNamespaceSpecifier",
+    )
+
+    if (!namespaceSpecifier || namespaceSpecifier.local.type !== "Identifier") {
+      return []
+    }
+
+    return [namespaceSpecifier.local.name]
+  })
 }
 
 export function classifyConvexExports(
