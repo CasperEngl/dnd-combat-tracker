@@ -5,12 +5,13 @@ import path from "node:path"
 import * as BabelParser from "@babel/parser"
 import type { File, ObjectExpression } from "@babel/types"
 import {
+  buildConvexHookApiModel,
   classifyConvexExports,
-  generateConvexDependenciesSource,
+  generateConvexHookApiSource,
   readConvexModuleNames,
-} from "./generate-convex-dependencies"
+} from "./src/index"
 
-const projectRoot = path.resolve(import.meta.dir, "..")
+const projectRoot = path.resolve(import.meta.dir, "..", "..")
 
 function getObjectPropertyNames(value: ObjectExpression) {
   return value.properties.flatMap((property) => {
@@ -68,8 +69,45 @@ describe("generate-convex-dependencies", () => {
     ])
   })
 
+  test("classifies exported convex handlers through TS wrappers", () => {
+    const source = `
+const localQuery = query
+
+const notExported = mutation({
+  args: {},
+  handler: async () => null,
+})
+
+export const getThing = (query({
+  args: {},
+  handler: async () => null,
+}) satisfies unknown)
+
+export const saveThing = mutation({
+  args: {},
+  handler: async () => null,
+}) as unknown
+
+export const computeThing = action({
+  args: {},
+  handler: async () => null,
+})
+
+export const delegatedThing = localQuery({
+  args: {},
+  handler: async () => null,
+})
+`
+
+    expect(classifyConvexExports(source)).toEqual([
+      { kind: "action", name: "computeThing" },
+      { kind: "query", name: "getThing" },
+      { kind: "mutation", name: "saveThing" },
+    ])
+  })
+
   test("emits a generated convex dependency context module", () => {
-    const source = generateConvexDependenciesSource([
+    const source = generateConvexHookApiSource([
       {
         name: "characterSettings",
         exports: [{ kind: "mutation", name: "upsertRogueSettings" }],
@@ -88,29 +126,29 @@ describe("generate-convex-dependencies", () => {
       sourceType: "module",
     })
 
-    const defaultConvexApi = ast.program.body.find(
+    const defaultHookApi = ast.program.body.find(
       (node) =>
         node.type === "VariableDeclaration" &&
         node.declarations.some(
           (declaration) =>
             declaration.id.type === "Identifier" &&
-            declaration.id.name === "defaultConvexApi",
+            declaration.id.name === "defaultHookApi",
         ),
     )
-    expect(defaultConvexApi).toBeDefined()
+    expect(defaultHookApi).toBeDefined()
 
-    const defaultConvexApiDeclaration =
-      defaultConvexApi?.type === "VariableDeclaration"
-        ? defaultConvexApi.declarations.find(
+    const defaultHookApiDeclaration =
+      defaultHookApi?.type === "VariableDeclaration"
+        ? defaultHookApi.declarations.find(
             (declaration) =>
               declaration.id.type === "Identifier" &&
-              declaration.id.name === "defaultConvexApi",
+              declaration.id.name === "defaultHookApi",
           )
         : undefined
-    expect(defaultConvexApiDeclaration?.init?.type).toBe("ObjectExpression")
+    expect(defaultHookApiDeclaration?.init?.type).toBe("ObjectExpression")
     expect(
-      defaultConvexApiDeclaration?.init?.type === "ObjectExpression"
-        ? defaultConvexApiDeclaration.init.properties
+      defaultHookApiDeclaration?.init?.type === "ObjectExpression"
+        ? defaultHookApiDeclaration.init.properties
         : undefined,
     ).toHaveLength(0)
 
@@ -260,8 +298,92 @@ describe("generate-convex-dependencies", () => {
     )
   })
 
+  test("builds a normalized hook api model", () => {
+    const model = buildConvexHookApiModel([
+      {
+        name: "characterSettings",
+        exports: [{ kind: "mutation", name: "upsertRogueSettings" }],
+      },
+      {
+        name: "characters",
+        exports: [
+          { kind: "mutation", name: "createCharacter" },
+          { kind: "query", name: "getAppState" },
+          { kind: "query", name: "getCharacterPageState" },
+        ],
+      },
+    ])
+
+    expect(model.convexReactImports).toEqual([
+      "useConvexAuth",
+      "useMutation",
+      "useQuery",
+      "type OptionalRestArgsOrSkip",
+      "type ReactMutation",
+    ])
+    expect(model.hasActions).toBe(false)
+    expect(
+      model.sections.map((section) => ({
+        collectionName: section.collectionName,
+        kind: section.kind,
+        modules: section.modules.map((moduleDefinition) => ({
+          entries: moduleDefinition.entries.map((entry) => ({
+            implementationHookName: entry.implementationHookName,
+            publicHookName: entry.publicHookName,
+          })),
+          name: moduleDefinition.name,
+        })),
+      })),
+    ).toEqual([
+      {
+        collectionName: "queries",
+        kind: "query",
+        modules: [
+          {
+            entries: [
+              {
+                implementationHookName: "useCharactersAppStateQuery",
+                publicHookName: "useAppState",
+              },
+              {
+                implementationHookName: "useCharactersCharacterPageStateQuery",
+                publicHookName: "useCharacterPageState",
+              },
+            ],
+            name: "characters",
+          },
+        ],
+      },
+      {
+        collectionName: "mutations",
+        kind: "mutation",
+        modules: [
+          {
+            entries: [
+              {
+                implementationHookName:
+                  "useCharacterSettingsUpsertRogueSettingsMutation",
+                publicHookName: "useUpsertRogueSettings",
+              },
+            ],
+            name: "characterSettings",
+          },
+          {
+            entries: [
+              {
+                implementationHookName: "useCharactersCreateCharacterMutation",
+                publicHookName: "useCreateCharacter",
+              },
+            ],
+            name: "characters",
+          },
+        ],
+      },
+    ])
+  })
+
   test("emits source that already matches Biome formatting", async () => {
-    const source = generateConvexDependenciesSource([
+    const source = generateConvexHookApiSource([
       {
         name: "characterSettings",
         exports: [{ kind: "mutation", name: "upsertRogueSettings" }],

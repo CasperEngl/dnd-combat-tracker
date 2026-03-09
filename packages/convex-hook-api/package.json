@@ -1,0 +1,12 @@
+{
+  "name": "convex-hook-api",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./cli": "./src/cli.ts"
+  },
+  "bin": {
+    "convex-hook-api": "./src/cli.ts"
+  }
+}
