@@ -150,7 +150,7 @@ function useAuthState() {
 
 ${generatedHooks.join("\n\n")}
 
-export const convexApi = {
+export const hookApi = {
   Provider: ConvexApiProvider,
   useDependencies: useApiDependencies,
   auth: {
@@ -381,7 +381,7 @@ export async function writeConvexDependenciesFile(projectRoot: string) {
     }),
   )
 
-  const outputPath = path.join(projectRoot, "src/generated/convex-api.tsx")
+  const outputPath = path.join(projectRoot, "src/generated/convex-hook-api.tsx")
 
   await mkdir(path.dirname(outputPath), { recursive: true })
   await writeFile(outputPath, generateConvexDependenciesSource(modules))

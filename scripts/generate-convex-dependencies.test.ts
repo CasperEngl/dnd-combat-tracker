@@ -122,34 +122,34 @@ describe("generate-convex-dependencies", () => {
       getFunctionDeclaration(ast, "useCharactersCreateCharacterMutation"),
     ).toBeDefined()
 
-    const convexApiExport = ast.program.body.find(
+    const hookApiExport = ast.program.body.find(
       (node) =>
         node.type === "ExportNamedDeclaration" &&
         node.declaration?.type === "VariableDeclaration" &&
         node.declaration.declarations.some(
           (declaration) =>
             declaration.id.type === "Identifier" &&
-            declaration.id.name === "convexApi",
+            declaration.id.name === "hookApi",
         ),
     )
-    expect(convexApiExport).toBeDefined()
+    expect(hookApiExport).toBeDefined()
 
-    const convexApiDeclaration =
-      convexApiExport?.type === "ExportNamedDeclaration" &&
-      convexApiExport.declaration?.type === "VariableDeclaration"
-        ? convexApiExport.declaration.declarations.find(
+    const hookApiDeclaration =
+      hookApiExport?.type === "ExportNamedDeclaration" &&
+      hookApiExport.declaration?.type === "VariableDeclaration"
+        ? hookApiExport.declaration.declarations.find(
             (declaration) =>
               declaration.id.type === "Identifier" &&
-              declaration.id.name === "convexApi",
+              declaration.id.name === "hookApi",
           )
         : undefined
-    expect(convexApiDeclaration?.init?.type).toBe("ObjectExpression")
+    expect(hookApiDeclaration?.init?.type).toBe("ObjectExpression")
 
-    const convexApiProperties =
-      convexApiDeclaration?.init?.type === "ObjectExpression"
-        ? getObjectPropertyNames(convexApiDeclaration.init)
+    const hookApiProperties =
+      hookApiDeclaration?.init?.type === "ObjectExpression"
+        ? getObjectPropertyNames(hookApiDeclaration.init)
         : []
-    expect(convexApiProperties).toEqual(
+    expect(hookApiProperties).toEqual(
       expect.arrayContaining([
         "Provider",
         "useDependencies",
@@ -160,8 +160,8 @@ describe("generate-convex-dependencies", () => {
     )
 
     const authProperty =
-      convexApiDeclaration?.init?.type === "ObjectExpression"
-        ? convexApiDeclaration.init.properties.find(
+      hookApiDeclaration?.init?.type === "ObjectExpression"
+        ? hookApiDeclaration.init.properties.find(
             (property) =>
               property.type === "ObjectProperty" &&
               property.key.type === "Identifier" &&
@@ -183,8 +183,8 @@ describe("generate-convex-dependencies", () => {
     )
 
     const queriesProperty =
-      convexApiDeclaration?.init?.type === "ObjectExpression"
-        ? convexApiDeclaration.init.properties.find(
+      hookApiDeclaration?.init?.type === "ObjectExpression"
+        ? hookApiDeclaration.init.properties.find(
             (property) =>
               property.type === "ObjectProperty" &&
               property.key.type === "Identifier" &&
@@ -220,8 +220,8 @@ describe("generate-convex-dependencies", () => {
     expect(queryHookProperties).toEqual(expect.arrayContaining(["useAppState"]))
 
     const mutationsProperty =
-      convexApiDeclaration?.init?.type === "ObjectExpression"
-        ? convexApiDeclaration.init.properties.find(
+      hookApiDeclaration?.init?.type === "ObjectExpression"
+        ? hookApiDeclaration.init.properties.find(
             (property) =>
               property.type === "ObjectProperty" &&
               property.key.type === "Identifier" &&
@@ -283,7 +283,7 @@ describe("generate-convex-dependencies", () => {
           "biome",
           "format",
           "--stdin-file-path",
-          "src/generated/convex-api.tsx",
+          "src/generated/convex-hook-api.tsx",
         ],
         {
           cwd: projectRoot,

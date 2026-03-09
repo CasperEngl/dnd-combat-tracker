@@ -1,5 +1,5 @@
 import { createContext, type ReactNode, useContext } from "react"
-import { convexApi } from "~/generated/convex-api"
+import { hookApi } from "~/generated/convex-hook-api"
 import type {
   CharacterRecord,
   RogueSettingsRecord,
@@ -41,7 +41,7 @@ export function RogueTrackerProvider({
   children: ReactNode
 }) {
   const persistSettings =
-    convexApi.mutations.characterSettings.useUpsertRogueSettings()
+    hookApi.mutations.characterSettings.useUpsertRogueSettings()
   const settings = buildSettings(character, rogueSettings)
 
   const saveSettings = async (nextSettings: RogueTrackerSettings) => {

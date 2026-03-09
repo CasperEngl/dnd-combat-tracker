@@ -7,7 +7,7 @@ import { Button, buttonVariants } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
 import { Switch } from "~/components/ui/switch"
-import { convexApi } from "~/generated/convex-api"
+import { hookApi } from "~/generated/convex-hook-api"
 
 import type {
   CharacterFormValues,
@@ -32,7 +32,7 @@ function RogueTrackerSettingsSection({
   rogueSettings: RogueSettingsRecord | null
 }) {
   const persistSettings =
-    convexApi.mutations.characterSettings.useUpsertRogueSettings()
+    hookApi.mutations.characterSettings.useUpsertRogueSettings()
   const form = useForm({
     defaultValues: {
       dexModifier: clampDexModifier(rogueSettings?.dexModifier ?? 0),
@@ -191,7 +191,7 @@ export function CharacterSheetScreen({
   onUpdateCharacter: (values: CharacterFormValues) => Promise<void>
   rogueSettings: RogueSettingsRecord | null
 }) {
-  const { signOut } = convexApi.auth.useActions()
+  const { signOut } = hookApi.auth.useActions()
   const trackerSupported = isTrackerSupported(activeCharacter)
 
   return (

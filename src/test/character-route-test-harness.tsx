@@ -6,7 +6,7 @@ import { ConvexReactClient } from "convex/react"
 import { getFunctionName } from "convex/server"
 import { createMemoryRouter, RouterProvider } from "react-router"
 import { Toaster } from "sonner"
-import { convexApi } from "~/generated/convex-api"
+import { hookApi } from "~/generated/convex-hook-api"
 import type {
   AppStateRecord,
   CharacterId,
@@ -108,10 +108,10 @@ function renderCharacterRoutes(
 
   render(
     <ConvexAuthProvider client={createFakeConvexClient()}>
-      <convexApi.Provider value={buildConvexDependencies()}>
+      <hookApi.Provider value={buildConvexDependencies()}>
         <RouterProvider router={router} />
         <Toaster />
-      </convexApi.Provider>
+      </hookApi.Provider>
     </ConvexAuthProvider>,
   )
 
@@ -141,7 +141,7 @@ function buildConvexDependencies() {
         updateCharacter: () => updateCharacterMock,
       },
     },
-  } satisfies Parameters<typeof convexApi.Provider>[0]["value"]
+  } satisfies Parameters<typeof hookApi.Provider>[0]["value"]
 }
 
 function getCharacterSwitcher() {

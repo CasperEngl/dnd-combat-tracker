@@ -3,7 +3,7 @@ import { useState } from "react"
 import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
-import { convexApi } from "~/generated/convex-api"
+import { hookApi } from "~/generated/convex-hook-api"
 
 type AuthFormValues = {
   email: string
@@ -17,7 +17,7 @@ function FieldError({ errors }: { errors: string[] }) {
 }
 
 export function AuthForm() {
-  const { signIn } = convexApi.auth.useActions()
+  const { signIn } = hookApi.auth.useActions()
   const [flow, setFlow] = useState<"signIn" | "signUp">("signIn")
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const form = useForm({

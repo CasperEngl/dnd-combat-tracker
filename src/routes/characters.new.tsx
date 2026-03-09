@@ -1,15 +1,15 @@
 import { Navigate, useNavigate } from "react-router"
 import { CreateCharacterForm } from "~/components/create-character-form"
 import { LoadingScreen } from "~/components/loading-screen"
-import { convexApi } from "~/generated/convex-api"
+import { hookApi } from "~/generated/convex-hook-api"
 
 import type { CharacterFormValues } from "~/lib/character-record"
 import { getCreatedCharacterPath } from "~/lib/character-routing"
 
 export default function NewCharacterRoute() {
-  const { isAuthenticated, isLoading } = convexApi.auth.useState()
-  const appState = convexApi.queries.characters.useAppState()
-  const createCharacter = convexApi.mutations.characters.useCreateCharacter()
+  const { isAuthenticated, isLoading } = hookApi.auth.useState()
+  const appState = hookApi.queries.characters.useAppState()
+  const createCharacter = hookApi.mutations.characters.useCreateCharacter()
   const navigate = useNavigate()
 
   if (isLoading || (isAuthenticated && appState === undefined)) {

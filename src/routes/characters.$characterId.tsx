@@ -1,6 +1,6 @@
 import { Navigate, Outlet, useOutletContext, useParams } from "react-router"
 import { LoadingScreen } from "~/components/loading-screen"
-import { convexApi } from "~/generated/convex-api"
+import { hookApi } from "~/generated/convex-hook-api"
 
 import type {
   CharacterFormValues,
@@ -18,14 +18,14 @@ type CharacterRouteContext = {
 
 export default function CharacterRouteLayout() {
   const characterId = useCharacterId()
-  const { isAuthenticated, isLoading } = convexApi.auth.useState()
-  const pageState = convexApi.queries.characters.useCharacterPageState({
+  const { isAuthenticated, isLoading } = hookApi.auth.useState()
+  const pageState = hookApi.queries.characters.useCharacterPageState({
     characterId,
   })
-  const createCharacter = convexApi.mutations.characters.useCreateCharacter()
-  const updateCharacter = convexApi.mutations.characters.useUpdateCharacter()
+  const createCharacter = hookApi.mutations.characters.useCreateCharacter()
+  const updateCharacter = hookApi.mutations.characters.useUpdateCharacter()
   const setActiveCharacter =
-    convexApi.mutations.characters.useSetActiveCharacter()
+    hookApi.mutations.characters.useSetActiveCharacter()
 
   if (isLoading || (isAuthenticated && pageState === undefined)) {
     return <LoadingScreen detail="Loading your character." />
