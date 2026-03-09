@@ -3,8 +3,7 @@ import {
   clampCharacterLevel,
   normalizeClassName,
   normalizeSubclassName,
-  resolveCharacterStatus,
-  resolveTurnMachineSlug,
+  resolveCharacterFlow,
   toClassSlug,
 } from "~/lib/character-model"
 
@@ -14,15 +13,22 @@ describe("character model", () => {
     expect(toClassSlug("Arcane Trickster")).toBe("arcane-trickster")
   })
 
-  test("treats rogues as supported and other classes as pending tracker work", () => {
-    expect(resolveTurnMachineSlug("rogue")).toBe("rogue")
-    expect(resolveCharacterStatus(resolveTurnMachineSlug("rogue"))).toBe(
-      "ready",
-    )
-    expect(resolveTurnMachineSlug("wizard")).toBeUndefined()
-    expect(resolveCharacterStatus(resolveTurnMachineSlug("wizard"))).toBe(
-      "needs-tracker",
-    )
+  test("resolves rogues into the dual-wield-skirmisher flow family", () => {
+    expect(resolveCharacterFlow("rogue")).toEqual({
+      classSlug: "rogue",
+      flowFamilySlug: "dual-wield-skirmisher",
+      trackerSlug: "rogue",
+      status: "ready",
+    })
+  })
+
+  test("leaves unsupported classes without a tracker", () => {
+    expect(resolveCharacterFlow("wizard")).toEqual({
+      classSlug: "wizard",
+      flowFamilySlug: undefined,
+      trackerSlug: undefined,
+      status: "needs-tracker",
+    })
   })
 
   test("clamps character level and omits blank subclasses", () => {

@@ -287,10 +287,10 @@ export function CharacterSheetScreen({
               </p>
             </div>
             <CharacterForm
-              description="Add another character to your own tracker library. Rogues jump straight into the live turn tracker."
+              description="Add another character to your tracker library. Supported classes open their live tracker right away."
               initialValues={{
                 name: "",
-                className: "Rogue",
+                className: "",
                 subclassName: "",
                 level: 1,
               }}

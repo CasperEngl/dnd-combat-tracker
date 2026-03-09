@@ -28,7 +28,8 @@ describe("character routing", () => {
         buildCharacterRecord({
           className: "Wizard",
           classSlug: "wizard",
-          turnMachineSlug: undefined,
+          flowFamilySlug: undefined,
+          trackerSlug: undefined,
           status: "needs-tracker",
         }),
       ),
@@ -69,7 +70,8 @@ describe("character routing", () => {
       _id: buildCharacterId("character-2"),
       className: "Wizard",
       classSlug: "wizard",
-      turnMachineSlug: undefined,
+      flowFamilySlug: undefined,
+      trackerSlug: undefined,
       status: "needs-tracker",
     })
 
@@ -101,7 +103,7 @@ function buildAppState(
   return {
     activeCharacterId: overrides.activeCharacterId ?? activeCharacter._id,
     activeCharacter,
-    activeRogueSettings: null,
+    activeTrackerSettings: null,
     characters,
     ...overrides,
   }
@@ -111,7 +113,7 @@ function buildEmptyAppState(): AppStateRecord {
   return {
     activeCharacterId: null,
     activeCharacter: null,
-    activeRogueSettings: null,
+    activeTrackerSettings: null,
     characters: [],
   }
 }
@@ -126,9 +128,10 @@ function buildCharacterRecord(
     name: "Nyx",
     className: "Rogue",
     classSlug: "rogue",
+    flowFamilySlug: "dual-wield-skirmisher",
     subclassName: "Thief",
     level: 5,
-    turnMachineSlug: "rogue",
+    trackerSlug: "rogue",
     status: "ready",
     createdAt: 1,
     updatedAt: 1,

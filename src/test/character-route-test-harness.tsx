@@ -6,6 +6,7 @@ import { ConvexReactClient } from "convex/react"
 import { getFunctionName } from "convex/server"
 import { createMemoryRouter, RouterProvider } from "react-router"
 import { Toaster } from "sonner"
+import { ClientLoaderToastBridge } from "~/components/client-loader-toast-bridge"
 import { hookApi } from "~/generated/convex-hook-api"
 import type {
   AppStateRecord,
@@ -19,6 +20,9 @@ const { default: CharacterRouteLayout } = await import(
   "../routes/characters.$characterId"
 )
 const { default: CharacterTrackerRoute } = await import(
+  "../routes/characters.$characterId._index"
+)
+const { redirectUnsupportedTracker } = await import(
   "../routes/characters.$characterId._index"
 )
 const { default: CharacterSheetRoute } = await import(
@@ -74,6 +78,7 @@ export const characterRouteTestHarness = {
     rawUpdateCharacterMock.mockClear()
     rawSetActiveCharacterMock.mockClear()
     rawUpsertRogueSettingsMock.mockClear()
+    window.sessionStorage.clear()
     document.body.innerHTML = ""
   },
   setCharacters(nextCharacters: CharacterRecord[]) {
@@ -92,6 +97,14 @@ function renderCharacterRoutes(
         children: [
           {
             index: true,
+            loader: ({ params }) => {
+              const characterId = params.characterId as CharacterId
+              const pageState = buildPageState(characterId)
+
+              redirectUnsupportedTracker(pageState.character, characterId)
+
+              return null
+            },
             element: <CharacterTrackerRoute />,
           },
           {
@@ -109,8 +122,9 @@ function renderCharacterRoutes(
   render(
     <ConvexAuthProvider client={createFakeConvexClient()}>
       <hookApi.Provider value={buildConvexDependencies()}>
-        <RouterProvider router={router} />
         <Toaster />
+        <ClientLoaderToastBridge />
+        <RouterProvider router={router} />
       </hookApi.Provider>
     </ConvexAuthProvider>,
   )
@@ -160,7 +174,7 @@ function buildAppState(): AppStateRecord {
   return {
     activeCharacterId: activeCharacter?._id ?? null,
     activeCharacter,
-    activeRogueSettings: null,
+    activeTrackerSettings: null,
     characters,
   }
 }
@@ -174,7 +188,7 @@ function buildPageState(characterId: CharacterId): CharacterPageStateRecord {
   return {
     activeCharacterId: characters[0]?._id ?? null,
     character,
-    characterRogueSettings: null,
+    characterTrackerSettings: null,
     characters,
   }
 }
@@ -189,9 +203,10 @@ function buildCharacterRecord(
     name: "Nyx",
     className: "Rogue",
     classSlug: "rogue",
+    flowFamilySlug: "dual-wield-skirmisher",
     subclassName: "Thief",
     level: 5,
-    turnMachineSlug: "rogue",
+    trackerSlug: "rogue",
     status: "ready",
     createdAt: 1,
     updatedAt: 1,
@@ -285,7 +300,7 @@ function getQueryResult(functionName: string, args: unknown) {
 
 function buildCharacterSettingsId(value: string) {
   return value as NonNullable<
-    CharacterPageStateRecord["characterRogueSettings"]
+    CharacterPageStateRecord["characterTrackerSettings"]
   >["_id"]
 }
 

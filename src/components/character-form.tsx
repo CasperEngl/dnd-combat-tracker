@@ -111,7 +111,7 @@ export function CharacterForm({
                 id={field.name}
                 onBlur={field.handleBlur}
                 onChange={(event) => field.handleChange(event.target.value)}
-                placeholder="Rogue"
+                placeholder="Barbarian"
                 required
                 value={field.state.value}
               />
@@ -134,7 +134,7 @@ export function CharacterForm({
                 id={field.name}
                 onBlur={field.handleBlur}
                 onChange={(event) => field.handleChange(event.target.value)}
-                placeholder="Arcane Trickster"
+                placeholder="Path of the Berserker"
                 value={field.state.value}
               />
             </div>

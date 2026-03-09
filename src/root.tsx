@@ -11,6 +11,7 @@ import {
 } from "react-router"
 import { Toaster } from "sonner"
 import type { Route } from "./+types/root"
+import { ClientLoaderToastBridge } from "./components/client-loader-toast-bridge"
 import { LoadingScreen } from "./components/loading-screen"
 import "./index.css"
 
@@ -43,8 +44,9 @@ export function Layout({ children }: { children: ReactNode }) {
 export default function App() {
   return (
     <ConvexAuthProvider client={convex}>
-      <Outlet />
       <Toaster position="top-center" richColors />
+      <ClientLoaderToastBridge />
+      <Outlet />
     </ConvexAuthProvider>
   )
 }

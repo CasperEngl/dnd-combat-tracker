@@ -9,9 +9,10 @@ export default defineSchema({
     name: v.string(),
     className: v.string(),
     classSlug: v.string(),
+    flowFamilySlug: v.optional(v.string()),
+    trackerSlug: v.optional(v.string()),
     subclassName: v.optional(v.string()),
     level: v.number(),
-    turnMachineSlug: v.optional(v.string()),
     status: v.union(
       v.literal("ready"),
       v.literal("needs-tracker"),

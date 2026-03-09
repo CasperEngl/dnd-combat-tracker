@@ -20,6 +20,7 @@
 - Prefer passing specific values as props instead of whole objects when practical.
 - Prefer component composition over passing props when it clarifies ownership; only default to component-as-prop patterns when you truly need slots.
 - Show redirect toasts from the place where the user is being redirected (the origin route), not from the destination route.
+- Loader-triggered toasts can fire before Sonner mounts; queue them and flush after the `<Toaster />` is mounted to avoid dropped notifications.
 - Prefer Inversion of Control over hardcoded feature wiring so trackers, classes, and services stay pluggable.
 - Follow `react.dev/learn/you-might-not-need-an-effect`; save persistent state from explicit events instead of synchronization effects.
 - The project targets React Compiler; do not add manual memoization with `useMemo`, `useCallback`, or similar escape hatches.

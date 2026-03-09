@@ -7,8 +7,7 @@ import {
   normalizeCharacterName,
   normalizeClassName,
   normalizeSubclassName,
-  resolveCharacterStatus,
-  resolveTurnMachineSlug,
+  resolveCharacterFlow,
   toClassSlug,
 } from "./characterModel"
 
@@ -22,7 +21,7 @@ export const getAppState = query({
         return {
           activeCharacterId: null,
           activeCharacter: null,
-          activeRogueSettings: null,
+          activeTrackerSettings: null,
           characters: [],
         }
       }
@@ -47,8 +46,8 @@ export const getAppState = query({
         characters[0] ??
         null
 
-      const activeRogueSettings =
-        activeCharacter?.turnMachineSlug === "rogue"
+      const activeTrackerSettings =
+        activeCharacter?.trackerSlug === "rogue"
           ? yield* Effect.promise(() =>
               ctx.db
                 .query("characterSettings")
@@ -63,7 +62,7 @@ export const getAppState = query({
       return {
         activeCharacterId: activeCharacter?._id ?? null,
         activeCharacter,
-        activeRogueSettings,
+        activeTrackerSettings,
         characters,
       }
     }).pipe(Effect.runPromise)
@@ -82,7 +81,7 @@ export const getCharacterPageState = query({
         return {
           activeCharacterId: null,
           character: null,
-          characterRogueSettings: null,
+          characterTrackerSettings: null,
           characters: [],
         }
       }
@@ -101,8 +100,8 @@ export const getCharacterPageState = query({
       )
       const character =
         characters.find((entry) => entry._id === args.characterId) ?? null
-      const characterRogueSettings =
-        character?.turnMachineSlug === "rogue"
+      const characterTrackerSettings =
+        character?.trackerSlug === "rogue"
           ? yield* Effect.promise(() =>
               ctx.db
                 .query("characterSettings")
@@ -118,7 +117,7 @@ export const getCharacterPageState = query({
         activeCharacterId:
           preferences?.activeCharacterId ?? characters[0]?._id ?? null,
         character,
-        characterRogueSettings,
+        characterTrackerSettings,
         characters,
       }
     }).pipe(Effect.runPromise)
@@ -142,7 +141,7 @@ export const createCharacter = mutation({
 
       const className = normalizeClassName(args.className)
       const classSlug = toClassSlug(className)
-      const turnMachineSlug = resolveTurnMachineSlug(classSlug)
+      const flow = resolveCharacterFlow(classSlug)
       const now = Date.now()
       const characterId = yield* Effect.promise(() =>
         ctx.db.insert("characters", {
@@ -150,10 +149,11 @@ export const createCharacter = mutation({
           name: normalizeCharacterName(args.name),
           className,
           classSlug,
+          flowFamilySlug: flow.flowFamilySlug,
+          trackerSlug: flow.trackerSlug,
           subclassName: normalizeSubclassName(args.subclassName),
           level: clampCharacterLevel(args.level),
-          turnMachineSlug,
-          status: resolveCharacterStatus(turnMachineSlug),
+          status: flow.status,
           createdAt: now,
           updatedAt: now,
         }),
@@ -179,7 +179,7 @@ export const createCharacter = mutation({
         )
       }
 
-      if (turnMachineSlug === "rogue") {
+      if (flow.trackerSlug === "rogue") {
         const rogueSettings = yield* Effect.promise(() =>
           ctx.db
             .query("characterSettings")
@@ -234,7 +234,7 @@ export const updateCharacter = mutation({
 
       const className = normalizeClassName(args.className)
       const classSlug = toClassSlug(className)
-      const turnMachineSlug = resolveTurnMachineSlug(classSlug)
+      const flow = resolveCharacterFlow(classSlug)
       const now = Date.now()
 
       yield* Effect.promise(() =>
@@ -242,15 +242,16 @@ export const updateCharacter = mutation({
           name: normalizeCharacterName(args.name),
           className,
           classSlug,
+          flowFamilySlug: flow.flowFamilySlug,
+          trackerSlug: flow.trackerSlug,
           subclassName: normalizeSubclassName(args.subclassName),
           level: clampCharacterLevel(args.level),
-          turnMachineSlug,
-          status: resolveCharacterStatus(turnMachineSlug),
+          status: flow.status,
           updatedAt: now,
         }),
       )
 
-      if (turnMachineSlug === "rogue") {
+      if (flow.trackerSlug === "rogue") {
         const rogueSettings = yield* Effect.promise(() =>
           ctx.db
             .query("characterSettings")

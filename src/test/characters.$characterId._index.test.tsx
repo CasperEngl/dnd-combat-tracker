@@ -1,7 +1,8 @@
 import "~/test/setup-dom"
-import { afterEach, beforeEach, describe, expect, test } from "bun:test"
+import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test"
 import { waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
+import { toast } from "sonner"
 import { characterRouteTestHarness } from "~/test/character-route-test-harness"
 
 describe("character tracker route", () => {
@@ -14,12 +15,15 @@ describe("character tracker route", () => {
   })
 
   test("redirects unsupported classes to the sheet and shows a toast", async () => {
+    const toastInfo = spyOn(toast, "info")
+
     characterRouteTestHarness.setCharacters([
       characterRouteTestHarness.buildCharacterRecord({
         className: "Wizard",
         classSlug: "wizard",
+        flowFamilySlug: undefined,
         subclassName: "Evoker",
-        turnMachineSlug: undefined,
+        trackerSlug: undefined,
         status: "needs-tracker",
       }),
     ])
@@ -35,10 +39,10 @@ describe("character tracker route", () => {
     })
 
     await waitFor(() => {
-      expect(document.body.textContent).toContain(
-        "Turn tracking is not ready for this class yet.",
-      )
+      expect(toastInfo).toHaveBeenCalledTimes(1)
     })
+
+    toastInfo.mockRestore()
   })
 
   test("switches to a supported character tracker route", async () => {
@@ -55,6 +59,10 @@ describe("character tracker route", () => {
     const router = characterRouteTestHarness.renderCharacterRoutes(
       "/characters/character-1",
     )
+
+    await waitFor(() => {
+      expect(document.querySelector("select")).toBeInstanceOf(HTMLSelectElement)
+    })
 
     await user.selectOptions(
       characterRouteTestHarness.getCharacterSwitcher(),
@@ -80,8 +88,9 @@ describe("character tracker route", () => {
       name: "Meris",
       className: "Wizard",
       classSlug: "wizard",
+      flowFamilySlug: undefined,
       subclassName: "Evoker",
-      turnMachineSlug: undefined,
+      trackerSlug: undefined,
       status: "needs-tracker",
     })
 
@@ -90,6 +99,10 @@ describe("character tracker route", () => {
     const router = characterRouteTestHarness.renderCharacterRoutes(
       "/characters/character-1",
     )
+
+    await waitFor(() => {
+      expect(document.querySelector("select")).toBeInstanceOf(HTMLSelectElement)
+    })
 
     await user.selectOptions(
       characterRouteTestHarness.getCharacterSwitcher(),
