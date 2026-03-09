@@ -4,6 +4,7 @@ import path from "node:path"
 import process from "node:process"
 import { type PluginItem, transformFromAstSync } from "@babel/core"
 import * as BabelParser from "@babel/parser"
+import { Effect } from "effect"
 
 const require = createRequire(import.meta.url)
 
@@ -88,7 +89,7 @@ type FileReport = {
   issues: NormalizedFailure[]
 }
 
-type Report = {
+export type Report = {
   generatedAt: string
   root: string
   summary: {
@@ -99,101 +100,21 @@ type Report = {
   files: FileReport[]
 }
 
-type CliOptions = {
+export type ReactCompilerCheckOptions = {
   annotations: "github" | null
   json: boolean
   outputPath: string | null
   silentSuccess: boolean
   targetPath: string
+  workspaceRoot?: string
 }
 
-const workspaceRoot = process.cwd()
-
-function printHelp() {
-  console.log(`React Compiler Check
-
-Usage:
-  bun ./scripts/react-compiler-check.ts [path] [options]
-
-Arguments:
-  path                 Root directory to scan. Defaults to src
-
-Options:
-  --json               Print machine-readable JSON output
-  --annotations <type> Emit CI annotations. Supported: github
-  --output <file>      Write the final report to a file
-  --silent-success     Skip the success message when no issues are found
-  --help, -h           Show this help message
-`)
+export type ReactCompilerCheckResult = {
+  report: Report
+  output: string
+  failureCount: number
+  fileFailureCount: number
 }
-
-function parseArguments(argv: string[]): CliOptions {
-  const options: CliOptions = {
-    annotations: null,
-    json: false,
-    outputPath: null,
-    silentSuccess: false,
-    targetPath: "src",
-  }
-
-  for (let index = 0; index < argv.length; index += 1) {
-    const argument = argv[index]
-
-    if (argument === "--json") {
-      options.json = true
-      continue
-    }
-
-    if (argument === "--annotations") {
-      const nextArgument = argv[index + 1]
-
-      if (!nextArgument) {
-        throw new Error("Expected an annotation type after --annotations.")
-      }
-
-      if (nextArgument !== "github") {
-        throw new Error(`Unsupported annotation type: ${nextArgument}`)
-      }
-
-      options.annotations = nextArgument
-      index += 1
-      continue
-    }
-
-    if (argument === "--silent-success") {
-      options.silentSuccess = true
-      continue
-    }
-
-    if (argument === "--output") {
-      const nextArgument = argv[index + 1]
-
-      if (!nextArgument) {
-        throw new Error("Expected a file path after --output.")
-      }
-
-      options.outputPath = nextArgument
-      index += 1
-      continue
-    }
-
-    if (argument === "--help" || argument === "-h") {
-      printHelp()
-      process.exit(0)
-    }
-
-    if (argument.startsWith("-")) {
-      throw new Error(`Unknown option: ${argument}`)
-    }
-
-    options.targetPath = argument
-  }
-
-  return options
-}
-
-const cliOptions = parseArguments(process.argv.slice(2))
-const targetRoot = path.resolve(workspaceRoot, cliOptions.targetPath)
 
 function getLanguageFromFilename(filename: string): Language {
   const extension = path.extname(filename).toLowerCase()
@@ -359,7 +280,7 @@ function emitGitHubAnnotation(failure: NormalizedFailure) {
   )
 }
 
-function loadCompilerPlugin(): PluginItem {
+function loadCompilerPlugin(workspaceRoot: string): PluginItem {
   try {
     return require(
       path.join(workspaceRoot, "node_modules/babel-plugin-react-compiler"),
@@ -369,50 +290,54 @@ function loadCompilerPlugin(): PluginItem {
   }
 }
 
-async function listSourceFiles(targetPath: string): Promise<string[]> {
-  const targetStat = await stat(targetPath)
+function listSourceFiles(targetPath: string) {
+  return Effect.gen(function* () {
+    const targetStat = yield* Effect.tryPromise(() => stat(targetPath))
 
-  if (targetStat.isFile()) {
-    if (!INCLUDE_EXTENSIONS.has(path.extname(targetPath).toLowerCase())) {
-      return []
+    if (targetStat.isFile()) {
+      if (!INCLUDE_EXTENSIONS.has(path.extname(targetPath).toLowerCase())) {
+        return []
+      }
+
+      return [targetPath]
     }
 
-    return [targetPath]
-  }
+    const sourceFiles: string[] = []
+    const queue = [targetPath]
 
-  const sourceFiles: string[] = []
-  const queue = [targetPath]
+    while (queue.length > 0) {
+      const currentDirectory = queue.pop()
 
-  while (queue.length > 0) {
-    const currentDirectory = queue.pop()
-
-    if (!currentDirectory) {
-      continue
-    }
-
-    const entries = await readdir(currentDirectory, { withFileTypes: true })
-
-    for (const entry of entries) {
-      const fullPath = path.join(currentDirectory, entry.name)
-
-      if (entry.isDirectory()) {
-        if (!EXCLUDED_DIRECTORIES.has(entry.name)) {
-          queue.push(fullPath)
-        }
+      if (!currentDirectory) {
         continue
       }
 
-      if (
-        entry.isFile() &&
-        INCLUDE_EXTENSIONS.has(path.extname(entry.name).toLowerCase())
-      ) {
-        sourceFiles.push(fullPath)
+      const entries = yield* Effect.tryPromise(() =>
+        readdir(currentDirectory, { withFileTypes: true }),
+      )
+
+      for (const entry of entries) {
+        const fullPath = path.join(currentDirectory, entry.name)
+
+        if (entry.isDirectory()) {
+          if (!EXCLUDED_DIRECTORIES.has(entry.name)) {
+            queue.push(fullPath)
+          }
+          continue
+        }
+
+        if (
+          entry.isFile() &&
+          INCLUDE_EXTENSIONS.has(path.extname(entry.name).toLowerCase())
+        ) {
+          sourceFiles.push(fullPath)
+        }
       }
     }
-  }
 
-  sourceFiles.sort()
-  return sourceFiles
+    sourceFiles.sort()
+    return sourceFiles
+  })
 }
 
 function checkFile(plugin: PluginItem, sourceCode: string, filename: string) {
@@ -456,116 +381,148 @@ function checkFile(plugin: PluginItem, sourceCode: string, filename: string) {
   return { failures }
 }
 
-async function main() {
-  const plugin = loadCompilerPlugin()
-  const files = await listSourceFiles(targetRoot)
-  const report: Report = {
-    generatedAt: new Date().toISOString(),
-    root: path.relative(workspaceRoot, targetRoot) || ".",
-    summary: {
-      filesScanned: files.length,
-      filesWithIssues: 0,
-      issues: 0,
-    },
-    files: [],
-  }
+export function runReactCompilerCheck(options: ReactCompilerCheckOptions) {
+  const workspaceRoot = options.workspaceRoot ?? process.cwd()
+  const targetRoot = path.resolve(workspaceRoot, options.targetPath)
 
-  let failureCount = 0
-  let fileFailureCount = 0
+  return Effect.gen(function* () {
+    const plugin = loadCompilerPlugin(workspaceRoot)
+    const files = yield* listSourceFiles(targetRoot)
+    const report: Report = {
+      generatedAt: new Date().toISOString(),
+      root: path.relative(workspaceRoot, targetRoot) || ".",
+      summary: {
+        filesScanned: files.length,
+        filesWithIssues: 0,
+        issues: 0,
+      },
+      files: [],
+    }
 
-  for (const file of files) {
-    const sourceCode = await readFile(file, "utf8")
-    const relativePath = path.relative(workspaceRoot, file)
+    let failureCount = 0
+    let fileFailureCount = 0
 
-    try {
-      const { failures } = checkFile(plugin, sourceCode, file)
+    for (const file of files) {
+      const relativePath = path.relative(workspaceRoot, file)
 
-      if (failures.length === 0) {
-        continue
-      }
+      try {
+        const sourceCode = yield* Effect.tryPromise(() =>
+          readFile(file, "utf8"),
+        )
+        const { failures } = checkFile(plugin, sourceCode, file)
 
-      const normalizedFailures = failures.map((failure) =>
-        normalizeFailure(failure, relativePath, sourceCode),
-      )
-
-      fileFailureCount += 1
-      failureCount += normalizedFailures.length
-      report.files.push({
-        file: relativePath,
-        issues: normalizedFailures,
-      })
-
-      if (!cliOptions.json) {
-        console.log(`\n${relativePath}`)
-
-        for (const failure of normalizedFailures) {
-          printFailure(failure)
+        if (failures.length === 0) {
+          continue
         }
-      }
 
-      if (cliOptions.annotations === "github") {
-        for (const failure of normalizedFailures) {
-          emitGitHubAnnotation(failure)
+        const normalizedFailures = failures.map((failure) =>
+          normalizeFailure(failure, relativePath, sourceCode),
+        )
+
+        fileFailureCount += 1
+        failureCount += normalizedFailures.length
+        report.files.push({
+          file: relativePath,
+          issues: normalizedFailures,
+        })
+
+        if (!options.json) {
+          yield* Effect.sync(() => {
+            console.log(`\n${relativePath}`)
+
+            for (const failure of normalizedFailures) {
+              printFailure(failure)
+            }
+          })
         }
-      }
-    } catch (error) {
-      fileFailureCount += 1
-      failureCount += 1
-      const message = error instanceof Error ? error.message : String(error)
-      const pipelineFailure: NormalizedFailure = {
-        category: null,
-        description: null,
-        file: relativePath,
-        functionName: null,
-        hookReference: null,
-        kind: "PipelineError",
-        location: {
-          column: null,
-          line: null,
-        },
-        reason: message,
-        source: null,
-      }
-      report.files.push({
-        file: relativePath,
-        issues: [pipelineFailure],
-      })
 
-      if (!cliOptions.json) {
-        console.log(`\n${relativePath}`)
-        printFailure(pipelineFailure)
-      }
+        if (options.annotations === "github") {
+          yield* Effect.sync(() => {
+            for (const failure of normalizedFailures) {
+              emitGitHubAnnotation(failure)
+            }
+          })
+        }
+      } catch (error) {
+        fileFailureCount += 1
+        failureCount += 1
+        const message = error instanceof Error ? error.message : String(error)
+        const pipelineFailure: NormalizedFailure = {
+          category: null,
+          description: null,
+          file: relativePath,
+          functionName: null,
+          hookReference: null,
+          kind: "PipelineError",
+          location: {
+            column: null,
+            line: null,
+          },
+          reason: message,
+          source: null,
+        }
+        report.files.push({
+          file: relativePath,
+          issues: [pipelineFailure],
+        })
 
-      if (cliOptions.annotations === "github") {
-        emitGitHubAnnotation(pipelineFailure)
+        if (!options.json) {
+          yield* Effect.sync(() => {
+            console.log(`\n${relativePath}`)
+            printFailure(pipelineFailure)
+          })
+        }
+
+        if (options.annotations === "github") {
+          yield* Effect.sync(() => {
+            emitGitHubAnnotation(pipelineFailure)
+          })
+        }
       }
     }
-  }
 
-  report.summary.filesWithIssues = fileFailureCount
-  report.summary.issues = failureCount
+    report.summary.filesWithIssues = fileFailureCount
+    report.summary.issues = failureCount
 
-  const output = cliOptions.json
-    ? JSON.stringify(report, null, 2)
-    : failureCount > 0
-      ? `\nReact Compiler found ${failureCount} issue${failureCount === 1 ? "" : "s"} in ${fileFailureCount} file${fileFailureCount === 1 ? "" : "s"}.`
-      : `React Compiler found no issues in ${files.length} files.`
+    const output = options.json
+      ? JSON.stringify(report, null, 2)
+      : failureCount > 0
+        ? `\nReact Compiler found ${failureCount} issue${
+            failureCount === 1 ? "" : "s"
+          } in ${fileFailureCount} file${fileFailureCount === 1 ? "" : "s"}.`
+        : `React Compiler found no issues in ${files.length} files.`
 
-  if (cliOptions.outputPath) {
-    const outputPath = path.resolve(workspaceRoot, cliOptions.outputPath)
-    await mkdir(path.dirname(outputPath), { recursive: true })
-    await writeFile(outputPath, `${output}\n`, "utf8")
-  }
+    if (options.outputPath) {
+      const outputPath = path.resolve(workspaceRoot, options.outputPath)
+      yield* Effect.tryPromise(() =>
+        mkdir(path.dirname(outputPath), { recursive: true }),
+      )
+      yield* Effect.tryPromise(() =>
+        writeFile(outputPath, `${output}\n`, "utf8"),
+      )
+    }
 
-  if (cliOptions.json) {
-    console.log(output)
-  } else if (!(cliOptions.silentSuccess && failureCount === 0)) {
-    console.log(output)
-  }
+    if (options.json) {
+      yield* Effect.sync(() => {
+        console.log(output)
+      })
+    } else if (!(options.silentSuccess && failureCount === 0)) {
+      yield* Effect.sync(() => {
+        console.log(output)
+      })
+    }
 
-  if (failureCount > 0) {
-    process.exitCode = 1
-  }
+    if (failureCount > 0) {
+      yield* Effect.sync(() => {
+        process.exitCode = 1
+      })
+    }
+
+    return {
+      report,
+      output,
+      failureCount,
+      fileFailureCount,
+    } satisfies ReactCompilerCheckResult
+  })
 }
-
-await main()
