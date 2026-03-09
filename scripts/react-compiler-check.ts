@@ -1,8 +1,8 @@
-import { readdir, readFile } from "node:fs/promises"
+import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises"
 import { createRequire } from "node:module"
 import path from "node:path"
 import process from "node:process"
-import { transformFromAstSync } from "@babel/core"
+import { type PluginItem, transformFromAstSync } from "@babel/core"
 import * as BabelParser from "@babel/parser"
 
 const require = createRequire(import.meta.url)
@@ -18,6 +18,7 @@ const INCLUDE_EXTENSIONS = new Set([
 const EXCLUDED_DIRECTORIES = new Set([
   "node_modules",
   ".git",
+  "generated",
   "dist",
   "build",
   "out",
@@ -31,13 +32,88 @@ const FAILURE_KINDS = new Set([
   "PipelineError",
 ])
 
+type Language = "flow" | "typescript"
+
+type EventLocation = {
+  start?: {
+    line?: number
+    column?: number
+  }
+  end?: {
+    line?: number
+    column?: number
+  }
+  identifierName?: string
+}
+
+type EventDetailItem = {
+  loc?: EventLocation
+  message?: string
+}
+
+type EventDetail = {
+  options?: {
+    category?: string | null
+  }
+  reason?: string | null
+  description?: string | null
+  details?: EventDetailItem[]
+  loc?: EventLocation
+}
+
+type CompilerEvent = {
+  kind?: string
+  fnName?: string | null
+  fnLoc: EventLocation
+  detail?: EventDetail
+}
+
+type NormalizedFailure = {
+  category: string | null
+  description: string | null
+  file: string
+  functionName: string | null
+  hookReference: string | null
+  kind: string
+  location: {
+    column: number | null
+    line: number | null
+  }
+  reason: string
+  source: string | null
+}
+
+type FileReport = {
+  file: string
+  issues: NormalizedFailure[]
+}
+
+type Report = {
+  generatedAt: string
+  root: string
+  summary: {
+    filesScanned: number
+    filesWithIssues: number
+    issues: number
+  }
+  files: FileReport[]
+}
+
+type CliOptions = {
+  annotations: "github" | null
+  json: boolean
+  outputPath: string | null
+  silentSuccess: boolean
+  targetPath: string
+}
+
 const workspaceRoot = process.cwd()
 
 function printHelp() {
   console.log(`React Compiler Check
 
 Usage:
-  node ./scripts/react-compiler-check.mjs [path] [options]
+  bun ./scripts/react-compiler-check.ts [path] [options]
 
 Arguments:
   path                 Root directory to scan. Defaults to src
@@ -51,8 +127,8 @@ Options:
 `)
 }
 
-function parseArguments(argv) {
-  const options = {
+function parseArguments(argv: string[]): CliOptions {
+  const options: CliOptions = {
     annotations: null,
     json: false,
     outputPath: null,
@@ -119,14 +195,16 @@ function parseArguments(argv) {
 const cliOptions = parseArguments(process.argv.slice(2))
 const targetRoot = path.resolve(workspaceRoot, cliOptions.targetPath)
 
-function getLanguageFromFilename(filename) {
+function getLanguageFromFilename(filename: string): Language {
   const extension = path.extname(filename).toLowerCase()
   return [".js", ".jsx", ".mjs"].includes(extension) ? "flow" : "typescript"
 }
 
-function formatLocation(location) {
-  const line = location?.start?.line
-  const column = location?.start?.column
+function formatLocation(location: {
+  start?: { line?: number; column?: number }
+}): string {
+  const line = location.start?.line
+  const column = location.start?.column
 
   if (typeof line !== "number") {
     return ""
@@ -139,7 +217,10 @@ function formatLocation(location) {
   return `:${line}:${column + 1}`
 }
 
-function getSourceLine(sourceCode, location) {
+function getSourceLine(
+  sourceCode: string,
+  location?: EventLocation,
+): string | null {
   const lineNumber = location?.start?.line
 
   if (typeof lineNumber !== "number") {
@@ -150,7 +231,7 @@ function getSourceLine(sourceCode, location) {
   return typeof line === "string" ? line.trim() : null
 }
 
-function getPrimaryDetail(event) {
+function getPrimaryDetail(event: CompilerEvent) {
   const detail = event.detail
 
   if (!detail) {
@@ -171,7 +252,11 @@ function getPrimaryDetail(event) {
   }
 }
 
-function normalizeFailure(event, relativePath, sourceCode) {
+function normalizeFailure(
+  event: CompilerEvent,
+  relativePath: string,
+  sourceCode: string,
+): NormalizedFailure {
   const detail = getPrimaryDetail(event)
   const location = detail?.location ?? event.fnLoc
   const sourceLine = getSourceLine(sourceCode, location)
@@ -181,22 +266,22 @@ function normalizeFailure(event, relativePath, sourceCode) {
     description: detail?.description ?? null,
     file: relativePath,
     functionName: event.fnName ?? null,
-    hookReference: location?.identifierName ?? null,
+    hookReference: location.identifierName ?? null,
     kind: event.kind ?? "Diagnostic",
     location: {
       column:
-        typeof location?.start?.column === "number"
+        typeof location.start?.column === "number"
           ? location.start.column + 1
           : null,
       line:
-        typeof location?.start?.line === "number" ? location.start.line : null,
+        typeof location.start?.line === "number" ? location.start.line : null,
     },
     reason: detail?.reason ?? "Unknown React Compiler diagnostic.",
     source: sourceLine,
   }
 }
 
-function printFailure(failure) {
+function printFailure(failure: NormalizedFailure) {
   const location = formatLocation({
     start: {
       column:
@@ -227,7 +312,7 @@ function printFailure(failure) {
   }
 }
 
-function escapeGitHubAnnotationValue(value) {
+function escapeGitHubAnnotationValue(value: string): string {
   return value
     .replace(/%/gu, "%25")
     .replace(/\r/gu, "%0D")
@@ -236,7 +321,7 @@ function escapeGitHubAnnotationValue(value) {
     .replace(/,/gu, "%2C")
 }
 
-function emitGitHubAnnotation(failure) {
+function emitGitHubAnnotation(failure: NormalizedFailure) {
   const metadata = [`file=${escapeGitHubAnnotationValue(failure.file)}`]
 
   if (typeof failure.location.line === "number") {
@@ -274,7 +359,7 @@ function emitGitHubAnnotation(failure) {
   )
 }
 
-function loadCompilerPlugin() {
+function loadCompilerPlugin(): PluginItem {
   try {
     return require(
       path.join(workspaceRoot, "node_modules/babel-plugin-react-compiler"),
@@ -284,9 +369,19 @@ function loadCompilerPlugin() {
   }
 }
 
-async function listSourceFiles(rootDirectory) {
-  const sourceFiles = []
-  const queue = [rootDirectory]
+async function listSourceFiles(targetPath: string): Promise<string[]> {
+  const targetStat = await stat(targetPath)
+
+  if (targetStat.isFile()) {
+    if (!INCLUDE_EXTENSIONS.has(path.extname(targetPath).toLowerCase())) {
+      return []
+    }
+
+    return [targetPath]
+  }
+
+  const sourceFiles: string[] = []
+  const queue = [targetPath]
 
   while (queue.length > 0) {
     const currentDirectory = queue.pop()
@@ -320,23 +415,12 @@ async function listSourceFiles(rootDirectory) {
   return sourceFiles
 }
 
-function checkFile(plugin, sourceCode, filename) {
-  const failures = []
-  const successes = []
+function checkFile(plugin: PluginItem, sourceCode: string, filename: string) {
+  const failures: CompilerEvent[] = []
   const logger = {
-    logEvent(loggedFilename, event) {
-      const normalizedEvent = {
-        ...event,
-        filename: loggedFilename,
-      }
-
-      if (FAILURE_KINDS.has(normalizedEvent.kind)) {
-        failures.push(normalizedEvent)
-        return
-      }
-
-      if (normalizedEvent.kind === "CompileSuccess") {
-        successes.push(normalizedEvent)
+    logEvent(_loggedFilename: string | null, event: CompilerEvent) {
+      if (FAILURE_KINDS.has(event.kind ?? "")) {
+        failures.push(event)
       }
     },
   }
@@ -369,13 +453,13 @@ function checkFile(plugin, sourceCode, filename) {
     sourceType: "module",
   })
 
-  return { failures, successes }
+  return { failures }
 }
 
 async function main() {
   const plugin = loadCompilerPlugin()
   const files = await listSourceFiles(targetRoot)
-  const report = {
+  const report: Report = {
     generatedAt: new Date().toISOString(),
     root: path.relative(workspaceRoot, targetRoot) || ".",
     summary: {
@@ -428,7 +512,7 @@ async function main() {
       fileFailureCount += 1
       failureCount += 1
       const message = error instanceof Error ? error.message : String(error)
-      const pipelineFailure = {
+      const pipelineFailure: NormalizedFailure = {
         category: null,
         description: null,
         file: relativePath,
@@ -468,7 +552,6 @@ async function main() {
       : `React Compiler found no issues in ${files.length} files.`
 
   if (cliOptions.outputPath) {
-    const { mkdir, writeFile } = await import("node:fs/promises")
     const outputPath = path.resolve(workspaceRoot, cliOptions.outputPath)
     await mkdir(path.dirname(outputPath), { recursive: true })
     await writeFile(outputPath, `${output}\n`, "utf8")

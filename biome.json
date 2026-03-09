@@ -7,7 +7,9 @@
       "!dist",
       "!node_modules",
       "!convex/_generated",
-      "!.react-router"
+      "!.react-router",
+      "!.tmp",
+      "!src/generated"
     ]
   },
   "formatter": {

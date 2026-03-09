@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test"
+import assert from "node:assert/strict"
 import type { AppStateRecord, CharacterRecord } from "~/lib/character-record"
 import {
   getCanonicalCharacterPath,
@@ -61,7 +62,7 @@ describe("character routing", () => {
   })
 
   test("redirects home to the best character destination", () => {
-    expect(getHomeRedirectTarget(buildAppState([]))).toBe("/characters/new")
+    expect(getHomeRedirectTarget(buildEmptyAppState())).toBe("/characters/new")
 
     const rogue = buildCharacterRecord()
     const wizard = buildCharacterRecord({
@@ -83,29 +84,35 @@ describe("character routing", () => {
         }),
       ),
     ).toBe("/characters/character-2/sheet")
-    expect(
-      getHomeRedirectTarget(
-        buildAppState([wizard], {
-          activeCharacter: null,
-          activeCharacterId: null,
-        }),
-      ),
-    ).toBe("/characters/character-2/sheet")
   })
 })
 
 function buildAppState(
   characters: CharacterRecord[],
-  overrides: Partial<AppStateRecord> = {},
+  overrides: Partial<
+    Extract<AppStateRecord, { activeCharacterId: CharacterRecord["_id"] }>
+  > = {},
 ): AppStateRecord {
-  const activeCharacter = characters[0] ?? null
+  const firstCharacter = characters[0]
+  assert(firstCharacter, "buildAppState requires at least one character")
+
+  const activeCharacter = overrides.activeCharacter ?? firstCharacter
 
   return {
-    activeCharacterId: activeCharacter?._id ?? null,
+    activeCharacterId: overrides.activeCharacterId ?? activeCharacter._id,
     activeCharacter,
     activeRogueSettings: null,
     characters,
     ...overrides,
+  }
+}
+
+function buildEmptyAppState(): AppStateRecord {
+  return {
+    activeCharacterId: null,
+    activeCharacter: null,
+    activeRogueSettings: null,
+    characters: [],
   }
 }
 

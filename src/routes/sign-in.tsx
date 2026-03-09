@@ -1,12 +1,12 @@
 import { Navigate } from "react-router"
 import { AuthForm } from "~/components/auth-form"
 import { LoadingScreen } from "~/components/loading-screen"
-import { useAppState, useAuthState } from "~/context/app-services-context"
+import { convexApi } from "~/generated/convex-api"
 import { getHomeRedirectTarget } from "~/lib/character-routing"
 
 export default function SignInRoute() {
-  const { isAuthenticated, isLoading } = useAuthState()
-  const appState = useAppState()
+  const { isAuthenticated, isLoading } = convexApi.auth.useState()
+  const appState = convexApi.queries.characters.useAppState()
 
   if (isLoading || (isAuthenticated && appState === undefined)) {
     return <LoadingScreen />

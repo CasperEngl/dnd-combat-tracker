@@ -1,6 +1,7 @@
 import "~/test/setup-dom"
-import { afterEach, beforeEach, describe, expect, test } from "bun:test"
+import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test"
 import { waitFor } from "@testing-library/react"
+import { toast } from "sonner"
 import { characterRouteTestHarness } from "~/test/character-route-test-harness"
 
 describe("character sheet route", () => {
@@ -13,6 +14,8 @@ describe("character sheet route", () => {
   })
 
   test("shows the unsupported tracker toast when entered from tracker redirect state", async () => {
+    const toastInfo = spyOn(toast, "info")
+
     characterRouteTestHarness.setCharacters([
       characterRouteTestHarness.buildCharacterRecord({
         className: "Wizard",
@@ -29,13 +32,15 @@ describe("character sheet route", () => {
     })
 
     await waitFor(() => {
-      expect(document.body.textContent).toContain(
-        "Turn tracking is not ready for this class yet.",
-      )
+      expect(toastInfo).toHaveBeenCalledTimes(1)
     })
+
+    toastInfo.mockRestore()
   })
 
   test("does not show the unsupported tracker toast on a normal sheet visit", async () => {
+    const toastInfo = spyOn(toast, "info")
+
     characterRouteTestHarness.setCharacters([
       characterRouteTestHarness.buildCharacterRecord({
         className: "Wizard",
@@ -54,8 +59,7 @@ describe("character sheet route", () => {
       expect(document.body.textContent).toContain("Character Sheet")
     })
 
-    expect(document.body.textContent).not.toContain(
-      "Turn tracking is not ready for this class yet.",
-    )
+    expect(toastInfo).not.toHaveBeenCalled()
+    toastInfo.mockRestore()
   })
 })

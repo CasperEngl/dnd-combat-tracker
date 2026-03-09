@@ -22,5 +22,8 @@
 - Follow `react.dev/learn/you-might-not-need-an-effect`; save persistent state from explicit events instead of synchronization effects.
 - The project targets React Compiler; do not add manual memoization with `useMemo`, `useCallback`, or similar escape hatches.
 - Biome is the primary React Compiler lint guardrail here; keep `useHookAtTopLevel` enabled and require explicit dependency arrays so `useExhaustiveDependencies` can catch stale closures early.
+- Prefer TDD for feature work and code changes: write a failing test first, make it pass, then refactor.
+- Remove deprecated tests when app requirements change and the old coverage is no longer needed; do not keep obsolete tests around just because behavior used to differ.
+- Do not remove tests just because new app support changes a previous expected failure without actually changing the underlying requirement.
 - Add newly discovered non-obvious rules, debugging traps, persistence constraints, and emerging project conventions to this file.
 - Keep additions short and factual so this file stays useful as a lightweight list of guidelines.

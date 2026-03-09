@@ -1,15 +1,16 @@
 import { mock } from "bun:test"
 import type { Id } from "@convex/_generated/dataModel"
+import { ConvexAuthProvider } from "@convex-dev/auth/react"
 import { render } from "@testing-library/react"
+import { ConvexReactClient } from "convex/react"
+import { getFunctionName } from "convex/server"
 import { createMemoryRouter, RouterProvider } from "react-router"
 import { Toaster } from "sonner"
-import {
-  type AppServices,
-  AppServicesProvider,
-} from "~/context/app-services-context"
+import { convexApi } from "~/generated/convex-api"
 import type {
   AppStateRecord,
   CharacterId,
+  CharacterMutationValues,
   CharacterPageStateRecord,
   CharacterRecord,
 } from "~/lib/character-record"
@@ -27,29 +28,31 @@ const { default: CharacterSheetRoute } = await import(
 let characters: CharacterRecord[] = []
 
 const rawSignInMock = mock(async () => ({ signingIn: false }))
-const signInMock: ReturnType<AppServices["authActions"]>["signIn"] =
-  rawSignInMock
+const signInMock = rawSignInMock
 const rawSignOutMock = mock(async () => undefined)
-const signOutMock: ReturnType<AppServices["authActions"]>["signOut"] =
-  rawSignOutMock
-const rawCreateCharacterMock = mock(async () =>
+const signOutMock = rawSignOutMock
+const rawCreateCharacterMock = mock(async (_args: CharacterMutationValues) =>
   buildCharacterId("character-99"),
 )
-const createCharacterMock: ReturnType<AppServices["createCharacter"]> =
-  rawCreateCharacterMock
-const rawUpdateCharacterMock = mock(async () => buildCharacterId("character-1"))
-const updateCharacterMock: ReturnType<AppServices["updateCharacter"]> =
-  rawUpdateCharacterMock
-const rawSetActiveCharacterMock = mock(async () =>
-  buildUserPreferenceId("preference-1"),
+const createCharacterMock = buildReactMutation(rawCreateCharacterMock)
+const rawUpdateCharacterMock = mock(
+  async (_args: CharacterMutationValues & { characterId: CharacterId }) =>
+    buildCharacterId("character-1"),
 )
-const setActiveCharacterMock: ReturnType<AppServices["setActiveCharacter"]> =
-  rawSetActiveCharacterMock
-const rawUpsertRogueSettingsMock = mock(async () =>
-  buildCharacterSettingsId("setting-1"),
+const updateCharacterMock = buildReactMutation(rawUpdateCharacterMock)
+const rawSetActiveCharacterMock = mock(
+  async (_args: { characterId: CharacterId }) =>
+    buildUserPreferenceId("preference-1"),
 )
-const upsertRogueSettingsMock: ReturnType<AppServices["upsertRogueSettings"]> =
-  rawUpsertRogueSettingsMock
+const setActiveCharacterMock = buildReactMutation(rawSetActiveCharacterMock)
+const rawUpsertRogueSettingsMock = mock(
+  async (_args: {
+    applyDexToBothWeapons: boolean
+    characterId: CharacterId
+    dexModifier: number
+  }) => buildCharacterSettingsId("setting-1"),
+)
+const upsertRogueSettingsMock = buildReactMutation(rawUpsertRogueSettingsMock)
 
 export const characterRouteTestHarness = {
   buildCharacterRecord,
@@ -104,26 +107,41 @@ function renderCharacterRoutes(
   )
 
   render(
-    <AppServicesProvider value={buildAppServices()}>
-      <RouterProvider router={router} />
-      <Toaster />
-    </AppServicesProvider>,
+    <ConvexAuthProvider client={createFakeConvexClient()}>
+      <convexApi.Provider value={buildConvexDependencies()}>
+        <RouterProvider router={router} />
+        <Toaster />
+      </convexApi.Provider>
+    </ConvexAuthProvider>,
   )
 
   return router
 }
 
-function buildAppServices(): AppServices {
+function buildConvexDependencies() {
   return {
-    authActions: () => ({ signIn: signInMock, signOut: signOutMock }),
-    authState: () => ({ isAuthenticated: true, isLoading: false }),
-    appState: () => buildAppState(),
-    characterPageState: (characterId) => buildPageState(characterId),
-    createCharacter: () => createCharacterMock,
-    updateCharacter: () => updateCharacterMock,
-    setActiveCharacter: () => setActiveCharacterMock,
-    upsertRogueSettings: () => upsertRogueSettingsMock,
-  }
+    auth: {
+      actions: () => ({ signIn: signInMock, signOut: signOutMock }),
+      state: () => ({ isAuthenticated: true, isLoading: false }),
+    },
+    queries: {
+      characters: {
+        getAppState: () => buildAppState(),
+        getCharacterPageState: (args) =>
+          args === "skip" ? undefined : buildPageState(args.characterId),
+      },
+    },
+    mutations: {
+      characterSettings: {
+        upsertRogueSettings: () => upsertRogueSettingsMock,
+      },
+      characters: {
+        createCharacter: () => createCharacterMock,
+        setActiveCharacter: () => setActiveCharacterMock,
+        updateCharacter: () => updateCharacterMock,
+      },
+    },
+  } satisfies Parameters<typeof convexApi.Provider>[0]["value"]
 }
 
 function getCharacterSwitcher() {
@@ -183,6 +201,86 @@ function buildCharacterRecord(
 
 function buildCharacterId(value: string) {
   return value as CharacterId
+}
+
+function createFakeConvexClient() {
+  const client = new ConvexReactClient("https://unused.convex.cloud")
+
+  client.setAuth = (_fetchToken, onChange) => {
+    onChange?.(true)
+  }
+  client.clearAuth = () => {}
+  client.watchQuery = (query, args) => ({
+    journal: () => undefined,
+    localQueryResult: () => getQueryResult(getFunctionName(query), args),
+    onUpdate: () => () => {},
+  })
+  client.mutation = (mutation, args) =>
+    getMutationResult(getFunctionName(mutation), args)
+  client.action = async () => undefined
+  client.connectionState = () => ({
+    connectionCount: 1,
+    connectionRetries: 0,
+    hasEverConnected: true,
+    hasInflightRequests: false,
+    inflightActions: 0,
+    inflightMutations: 0,
+    isWebSocketConnected: true,
+    timeOfOldestInflightRequest: null,
+  })
+  client.subscribeToConnectionState = () => () => {}
+
+  return client
+}
+
+function buildReactMutation<Args, Result>(
+  callback: (args: Args) => Promise<Result>,
+) {
+  const mutation = Object.assign((args: Args) => callback(args), {
+    withOptimisticUpdate() {
+      return mutation
+    },
+  })
+
+  return mutation
+}
+
+function getMutationResult(functionName: string, args: unknown) {
+  switch (functionName) {
+    case "characters:createCharacter":
+      return rawCreateCharacterMock(
+        args as Parameters<typeof rawCreateCharacterMock>[0],
+      )
+    case "characters:setActiveCharacter":
+      return rawSetActiveCharacterMock(
+        args as Parameters<typeof rawSetActiveCharacterMock>[0],
+      )
+    case "characters:updateCharacter":
+      return rawUpdateCharacterMock(
+        args as Parameters<typeof rawUpdateCharacterMock>[0],
+      )
+    case "characterSettings:upsertRogueSettings":
+      return rawUpsertRogueSettingsMock(
+        args as Parameters<typeof rawUpsertRogueSettingsMock>[0],
+      )
+    default:
+      throw new Error(`Unexpected mutation in test harness: ${functionName}`)
+  }
+}
+
+function getQueryResult(functionName: string, args: unknown) {
+  switch (functionName) {
+    case "characters:getAppState":
+      return buildAppState()
+    case "characters:getCharacterPageState":
+      if (!args || args === "skip") {
+        return undefined
+      }
+
+      return buildPageState((args as { characterId: CharacterId }).characterId)
+    default:
+      throw new Error(`Unexpected query in test harness: ${functionName}`)
+  }
 }
 
 function buildCharacterSettingsId(value: string) {
