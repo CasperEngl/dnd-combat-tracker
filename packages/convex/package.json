@@ -1,0 +1,29 @@
+{
+  "name": "@dnd-combat-tracker/convex",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./client/index.ts",
+    "./data-model": "./client/data-model.ts",
+    "./hook-api": "./client/hook-api.tsx"
+  },
+  "scripts": {
+    "build": "bun run typecheck",
+    "codegen": "bun run --cwd ../.. convex:codegen",
+    "generate-hook-api": "bun --cwd ../.. ./packages/convex-hook-api/src/cli.ts generate --functions-dir packages/convex/functions --out packages/convex/client/hook-api.tsx",
+    "test": "bun test",
+    "typecheck": "bun run generate-hook-api && tsc --project tsconfig.backend.json --noEmit && tsc --project tsconfig.client.json --noEmit"
+  },
+  "dependencies": {
+    "@convex-dev/auth": "^0.0.91",
+    "convex": "^1.32.0",
+    "effect": "^3.19.19",
+    "react": "^19.2.0"
+  },
+  "devDependencies": {
+    "@dnd-combat-tracker/tsconfig": "workspace:*",
+    "@types/node": "^25.3.5",
+    "@types/react": "^19.2.7",
+    "typescript": "^5.9.3"
+  }
+}

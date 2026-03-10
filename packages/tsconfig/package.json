@@ -1,0 +1,10 @@
+{
+  "name": "@dnd-combat-tracker/tsconfig",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./app": "./app.json",
+    "./base": "./base.json",
+    "./lib": "./lib.json"
+  }
+}

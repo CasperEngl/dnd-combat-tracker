@@ -1,0 +1,12 @@
+{
+  "extends": "@dnd-combat-tracker/tsconfig/app",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "composite": true,
+    "paths": {
+      "~/*": ["./src/*"]
+    },
+    "rootDirs": [".", "./.react-router/types"]
+  },
+  "include": ["src", ".react-router/types/**/*"]
+}

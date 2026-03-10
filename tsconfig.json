@@ -1,18 +1,17 @@
 {
-  "compilerOptions": {
-    "baseUrl": ".",
-    "paths": {
-      "~/*": ["./src/*"],
-      "@convex/*": ["./convex/*"]
-    }
-  },
   "files": [],
   "references": [
     {
-      "path": "./tsconfig.app.json"
+      "path": "./apps/web"
     },
     {
-      "path": "./tsconfig.node.json"
+      "path": "./packages/convex"
+    },
+    {
+      "path": "./packages/convex-hook-api"
+    },
+    {
+      "path": "./packages/react-compiler-check"
     }
   ]
 }
