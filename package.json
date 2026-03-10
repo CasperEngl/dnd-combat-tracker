@@ -12,7 +12,7 @@
     "check": "bun run lint && bun run typecheck && bun run test",
     "codegen": "bun run convex:codegen && bun ./packages/convex-hook-api/src/cli.ts generate --functions-dir packages/convex/functions --out packages/convex/client/hook-api.tsx",
     "convex:codegen": "convex codegen",
-    "dev": "convex dev --run-sh \"bun --cwd apps/web run dev\"",
+    "dev": "convex dev --run-sh \"bun run --cwd apps/web dev\"",
     "format": "biome format --write .",
     "format:check": "biome format .",
     "lint": "biome check .",
