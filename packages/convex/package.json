@@ -12,7 +12,7 @@
     "codegen": "bun run --cwd ../.. convex:codegen",
     "generate-hook-api": "bun --cwd ../.. ./packages/convex-hook-api/src/cli.ts generate --functions-dir packages/convex/functions --out packages/convex/client/hook-api.tsx",
     "test": "bun test",
-    "typecheck": "bun run codegen && bun run generate-hook-api && tsc --project tsconfig.backend.json --noEmit && tsc --project tsconfig.client.json --noEmit"
+    "typecheck": "bun run generate-hook-api && tsc --project tsconfig.backend.json --noEmit && tsc --project tsconfig.client.json --noEmit"
   },
   "dependencies": {
     "@convex-dev/auth": "^0.0.91",
