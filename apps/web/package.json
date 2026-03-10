@@ -6,7 +6,6 @@
     "build": "bun run typegen && bun run codegen && react-router build",
     "codegen": "bun run --cwd ../.. codegen",
     "dev": "react-router dev",
-    "dev:plain": "react-router dev",
     "test": "bun test",
     "typecheck": "bun run typegen && bun run codegen && tsc -b",
     "typegen": "react-router typegen"
