@@ -7,7 +7,7 @@ on:
       - main
 
 env:
-  CONVEX_DEPLOYMENT: marvelous-hound-269
+  CONVEX_DEPLOYMENT: dev:marvelous-hound-269
   CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
   VITE_CONVEX_URL: https://marvelous-hound-269.eu-west-1.convex.cloud
 
