@@ -59,19 +59,33 @@ function getFunctionDeclaration(
 }
 
 describe("convex-hook-api", () => {
-  test("discovers convex module names from the generated api declaration", async () => {
+  test("discovers convex module paths from the generated api declaration", async () => {
     const apiDeclaration = await readFile(
       path.join(projectRoot, "packages/convex/functions/_generated/api.d.ts"),
       "utf8",
     )
 
-    expect(readConvexModuleNames(apiDeclaration)).toEqual([
-      "auth",
-      "characterModel",
-      "characterSettings",
-      "characters",
-      "http",
-    ])
+    const moduleNames = readConvexModuleNames(apiDeclaration)
+
+    expect(moduleNames).toEqual(
+      expect.arrayContaining([
+        "auth",
+        "characterModel",
+        "characterSettings",
+        "characters",
+        "http",
+        "schemas/characterSettings",
+        "schemas/characters",
+        "schemas/userPreferences",
+      ]),
+    )
+    expect(moduleNames).not.toEqual(
+      expect.arrayContaining([
+        "schemas_characterSettings",
+        "schemas_characters",
+        "schemas_userPreferences",
+      ]),
+    )
   })
 
   test("classifies public convex queries and mutations from a module source file", async () => {
@@ -463,6 +477,26 @@ export const delegatedThing = localQuery({
     )
 
     await rm(outputPath, { force: true })
+  })
+
+  test("cli generate defaults to the monorepo convex layout", async () => {
+    const exitCode = await runCommandExitCode(
+      makeCommand("bun", [
+        "./packages/convex-hook-api/src/cli.ts",
+        "generate",
+        "--project-root",
+        ".",
+      ]),
+    )
+
+    expect(Number(exitCode)).toBe(0)
+
+    const generatedSource = await readFile(
+      path.join(projectRoot, "packages/convex/client/hook-api.tsx"),
+      "utf8",
+    )
+
+    expect(generatedSource).toContain('from "../functions/_generated/api.js"')
   })
 
   test("cli generate fails for an invalid project root", async () => {

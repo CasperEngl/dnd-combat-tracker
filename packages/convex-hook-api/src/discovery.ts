@@ -25,11 +25,17 @@ export function readConvexModuleNames(sourceText: string) {
       (specifier) => specifier.type === "ImportNamespaceSpecifier",
     )
 
-    if (!namespaceSpecifier || namespaceSpecifier.local.type !== "Identifier") {
+    if (!namespaceSpecifier) {
       return []
     }
 
-    return [namespaceSpecifier.local.name]
+    const sourceValue = statement.source.value
+    const trimmed = sourceValue.startsWith("../")
+      ? sourceValue.slice(3)
+      : sourceValue
+    const withoutExtension = trimmed.replace(/\.js$/, "")
+
+    return [withoutExtension]
   })
 }
 
